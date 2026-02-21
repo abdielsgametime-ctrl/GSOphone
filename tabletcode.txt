@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GS Tablet Simulator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap');
+  *{box-sizing:border-box;font-family:"Google Sans",sans-serif}
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0f1724;color:#fff}
+  .tablet{width:min(1100px,95vw);height:min(760px,92vh);border-radius:28px;background:#1a2233;box-shadow:0 20px 60px rgba(0,0,0,.55);padding:14px;display:grid;grid-template-columns:260px 1fr;gap:12px}
+  .sidebar,.main{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:18px}
+  .sidebar{padding:12px}
+  .main{padding:14px;display:flex;flex-direction:column;gap:10px}
+  .title{font-size:20px;font-weight:700;margin-bottom:10px}
+  .app{padding:10px;border-radius:12px;background:rgba(255,255,255,.08);margin-bottom:8px;cursor:pointer}
+  .app:hover{background:rgba(26,115,232,.35)}
+  .card{background:rgba(255,255,255,.08);border-radius:14px;padding:12px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+</style>
+</head>
+<body>
+  <div class="tablet">
+    <aside class="sidebar">
+      <div class="title">GS Tablet</div>
+      <div class="app">🛍️ GS Play Store</div>
+      <div class="app">📧 Gmail</div>
+      <div class="app">🗺️ Maps</div>
+      <div class="app">🖼️ Gallery</div>
+      <div class="app">🧮 Calculator</div>
+      <div class="app">📝 Notes</div>
+      <div class="app">⚙️ Settings</div>
+    </aside>
+    <main class="main">
+      <div class="title">Tablet Home</div>
+      <div class="row">
+        <div class="card"><strong>Split Screen</strong><br>Run two apps side-by-side (simulated).</div>
+        <div class="card"><strong>Taskbar</strong><br>Pin frequent apps for quick launch.</div>
+      </div>
+      <div class="row">
+        <div class="card"><strong>Samsung DeX style</strong><br>Desktop-like workspace simulation.</div>
+        <div class="card"><strong>Pen Notes</strong><br>Sketch and write (UI placeholder).</div>
+      </div>
+      <div class="card"><strong>Widgets</strong><br>Weather, calendar, and battery widgets optimized for tablet layout.</div>
+    </main>
+  </div>
+</body>
+</html>
