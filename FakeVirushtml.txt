@@ -1,0 +1,1083 @@
+<body>
+<div class="phone-frame">
+    <div class="side-button power" id="btnPower"></div>
+    <div class="side-button vol-up" id="btnVolUp"></div>
+    <div class="side-button vol-down" id="btnVolDown"></div>
+
+    <div class="phone-screen awake" id="phoneScreen">
+        <!-- Dev overlay -->
+        <div class="dev-overlay" id="devOverlay">
+            <div class="dev-overlay-row">
+                <div class="dev-overlay-box" id="devFpsBox">FPS: -- • CPU: --%</div>
+                <div class="dev-overlay-box" id="devNetBox">Net: -- • Ping: --ms</div>
+            </div>
+        </div>
+
+        <!-- Quick shade -->
+        <div class="dropdown-shade" id="dropdownShade">
+            <div class="shade-header">
+                <div>
+                    <div class="shade-title">GSO Quick Panel</div>
+                    <div style="font-size:11px;opacity:0.8;" id="shadeSubtitle">Balanced • Network: detecting…</div>
+                </div>
+                <button class="btn btn-secondary" style="padding:4px 8px;font-size:10px;" id="btnShadeClose">Close</button>
+            </div>
+            <div class="shade-grid">
+                <div class="shade-tile active" data-toggle="wifi">
+                    <div>📶</div>
+                    <div class="shade-tile-label">Wi‑Fi</div>
+                </div>
+                <div class="shade-tile active" data-toggle="bt">
+                    <div>🌀</div>
+                    <div class="shade-tile-label">Bluetooth</div>
+                </div>
+                <div class="shade-tile active" data-toggle="cell">
+                    <div>📡</div>
+                    <div class="shade-tile-label">Cellular</div>
+                </div>
+                <div class="shade-tile" data-toggle="dev">
+                    <div>🛠️</div>
+                    <div class="shade-tile-label">Dev options</div>
+                </div>
+                <div class="shade-tile" data-toggle="bounds">
+                    <div>📐</div>
+                    <div class="shade-tile-label">Layout bounds</div>
+                </div>
+                <div class="shade-tile" data-toggle="slow">
+                    <div>🐢</div>
+                    <div class="shade-tile-label">Slow anim</div>
+                </div>
+                <div class="shade-tile" data-toggle="flash">
+                    <div>⚡</div>
+                    <div class="shade-tile-label">Flash border</div>
+                </div>
+                <div class="shade-tile" data-toggle="logs">
+                    <div>📋</div>
+                    <div class="shade-tile-label">Dev logs</div>
+                </div>
+            </div>
+            <div class="shade-slider-row">
+                <div class="shade-slider-label">Brightness</div>
+                <input type="range" min="10" max="100" value="80" class="shade-slider" id="brightnessSlider">
+            </div>
+        </div>
+
+        <!-- Status bar -->
+        <div class="status-bar" id="statusBar">
+            <div class="status-left">
+                <span id="statusTime">--:--</span>
+            </div>
+            <div class="status-center">GSO</div>
+            <div class="status-right">
+                <div class="icon-signal"><div class="signal-bar"></div></div>
+                <div class="icon-wifi"><div class="wifi-dot"></div></div>
+                <div class="icon-battery">
+                    <div class="battery-level" id="batteryLevel" style="width:80%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Volume overlay -->
+        <div class="volume-overlay" id="volumeOverlay">
+            <div class="volume-icon">🔊</div>
+            <div class="volume-bar">
+                <div class="volume-fill" id="volumeFill" style="height:60%;"></div>
+            </div>
+        </div>
+
+        <!-- Power menu -->
+        <div class="power-menu" id="powerMenu">
+            <div class="power-menu-card">
+                <div class="power-menu-title">Power options</div>
+                <div class="power-menu-buttons">
+                    <button class="btn btn-primary" id="btnShutdown">Power off</button>
+                    <button class="btn btn-secondary" id="btnReboot">Reboot</button>
+                    <button class="btn btn-secondary" id="btnSleep">Sleep</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div class="toast" id="toast"></div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Boot -->
+            <div class="boot-screen active" id="bootScreen">
+                <div class="boot-logo">GSO</div>
+                <div class="boot-sub">Dev Edition • Booting virtual device…</div>
+                <div class="boot-loader">
+                    <div class="boot-loader-fill"></div>
+                </div>
+            </div>
+
+            <!-- Shutdown -->
+            <div class="shutdown-screen" id="shutdownScreen">
+                <div class="shutdown-screen-text">Shutting down GSO Phone…</div>
+                <div class="shutdown-hint">Hold the power button to boot again.</div>
+            </div>
+
+            <!-- Sleep -->
+            <div class="sleep-overlay" id="sleepOverlay"></div>
+
+            <!-- Lock screen -->
+            <div class="lock-screen" id="lockScreen">
+                <div>
+                    <div class="lock-time" id="lockTime">--:--</div>
+                    <div class="lock-date" id="lockDate">---</div>
+                    <div class="lock-pin">
+                        <div class="pin-dots">
+                            <div class="pin-dot" data-idx="0"></div>
+                            <div class="pin-dot" data-idx="1"></div>
+                            <div class="pin-dot" data-idx="2"></div>
+                            <div class="pin-dot" data-idx="3"></div>
+                        </div>
+                        <div class="pin-pad" id="pinPad"></div>
+                    </div>
+                </div>
+                <div class="lock-notifications" id="lockNotifs"></div>
+                <div class="lock-footer">Swipe up or enter PIN to unlock</div>
+            </div>
+
+            <!-- Home screen -->
+            <div class="home-screen" id="homeScreen">
+                <div>
+                    <div class="widget-row">
+                        <div class="widget" id="weatherWidget">
+                            <div class="widget-title">Weather</div>
+                            <div class="widget-main" id="weatherMain">--°</div>
+                            <div class="widget-sub" id="weatherSub">Fetching real weather…</div>
+                        </div>
+                        <div class="widget">
+                            <div class="widget-title">Storage</div>
+                            <div class="widget-main">128 GB</div>
+                            <div class="widget-sub">Virtual device</div>
+                            <div class="storage-bar">
+                                <div class="storage-fill" id="storageFill"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="widget-row">
+                        <div class="widget">
+                            <div class="widget-title">Now playing</div>
+                            <div class="widget-main">Lo‑fi dev beats</div>
+                            <div class="widget-sub">For debugging at 2am</div>
+                        </div>
+                        <div class="widget">
+                            <div class="widget-title">Dev status</div>
+                            <div class="widget-main">All systems nominal</div>
+                            <div class="widget-sub">Tap Dev options in Quick Panel</div>
+                        </div>
+                    </div>
+                    <div class="app-grid" id="appGrid">
+                        <!-- Core apps -->
+                        <div class="app-icon" draggable="true" data-app="phone">
+                            <div class="app-icon-circle system">📞</div>
+                            <div>Phone</div>
+                        </div>
+                        <div class="app-icon" draggable="true" data-app="messages">
+                            <div class="app-icon-circle system">💬</div>
+                            <div>Messages</div>
+                        </div>
+                        <div class="app-icon" draggable="true" data-app="mail">
+                            <div class="app-icon-circle system">📧</div>
+                            <div>Mail</div>
+                        </div>
+                        <div class="app-icon" draggable="true" data-app="browser">
+                            <div class="app-icon-circle media">🌐</div>
+                            <div>Browser</div>
+                        </div>
+                        <div class="app-icon" draggable="true" data-app="camera">
+                            <div class="app-icon-circle media">📷</div>
+                            <div>Camera</div>
+                        </div>
+                        <div class="app-icon" draggable="true" data-app="maps">
+                            <div class="app-icon-circle tools">🗺️</div>
+                            <div>Maps</div>
+                        </div>
+                        <div class="app-icon" draggable="true" data-app="store">
+                            <div class="app-icon-circle store">🛒</div>
+                            <div>GSO Store</div>
+                        </div>
+                        <div class="app-icon" draggable="true" data-app="settings">
+                            <div class="app-icon-circle tools">⚙️</div>
+                            <div>Settings</div>
+                        </div>
+                        <!-- New: GS Defend -->
+                        <div class="app-icon" draggable="true" data-app="gsdefend">
+                            <div class="app-icon-circle tools">🛡️</div>
+                            <div>GS Defend</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="dock">
+                    <div class="app-icon" data-app="phone">
+                        <div class="app-icon-circle system">📞</div>
+                    </div>
+                    <div class="app-icon" data-app="messages">
+                        <div class="app-icon-circle system">💬</div>
+                    </div>
+                    <div class="app-icon" data-app="camera">
+                        <div class="app-icon-circle media">📷</div>
+                    </div>
+                    <div class="app-icon" data-app="browser">
+                        <div class="app-icon-circle media">🌐</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generic app container -->
+            <div class="app-screen" id="appScreen">
+                <div class="app-header">
+                    <div class="app-back" id="btnAppBack">←</div>
+                    <div class="app-title" id="appTitle">App</div>
+                </div>
+                <div class="app-body" id="appBody"></div>
+            </div>
+
+            <!-- Ransomware overlay -->
+            <div id="wannaRansomOverlay">
+                <h1>Wanna Ransomware</h1>
+                <h2>Your system files are locked. Pay to restore access.</h2>
+                <div id="wannaRansomTimer">Time left: 23:59:59</div>
+
+                <div class="wanna-panel">
+                    <div class="wanna-label">Bitcoin address</div>
+                    <div class="wanna-value" id="wannaBtcAddress">
+                        1GSDEFENDFAKEBTCADDRESSONLYFORFUN0001
+                    </div>
+
+                    <div class="wanna-label" style="margin-top:10px;">Amount required</div>
+                    <div class="wanna-value" id="wannaBtcAmount">
+                        0.15000000 BTC
+                    </div>
+
+                    <div class="wanna-label" style="margin-top:10px;">Instructions</div>
+                    <div class="wanna-value">
+                        Send the exact amount of Bitcoin to the address above. Then click
+                        "I paid in Bitcoin".<br><br>
+                        <strong>Note:</strong> This is a fictional simulation. No real payment is processed.
+                    </div>
+
+                    <div class="wanna-actions">
+                        <button class="wanna-btn wanna-btn-primary" id="btnWannaPaid">
+                            I paid in Bitcoin
+                        </button>
+                        <button class="wanna-btn wanna-btn-secondary" id="btnWannaOpenGS">
+                            Open GS Defend Antivirus
+                        </button>
+                        <div id="wannaStatus"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GS Defend window -->
+            <div id="gsDefendApp">
+                <div id="gsDefendHeader">
+                    <div id="gsDefendHeaderTitle">
+                        <span class="logo">GS</span>
+                        <span>GS Defend • System Protection</span>
+                    </div>
+                    <button id="gsDefendClose">×</button>
+                </div>
+                <div id="gsDefendBody">
+                    <div>
+                        <div class="gsd-section-title">Protection status</div>
+                        <div class="gsd-chip-row">
+                            <div class="gsd-chip">Real-time shield: Simulated</div>
+                            <div class="gsd-chip">Ransomware guard: Active</div>
+                            <div class="gsd-chip">Last scan: Just now (simulated)</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="gsd-section-title">System scan</div>
+                        <button id="gsDefendScanButton">Run full scan</button>
+                        <div id="gsDefendScanStatus">Idle. No active scan.</div>
+                        <div id="gsDefendThreatList"></div>
+                        <div id="gsDefendActionsRow">
+                            <button class="gsd-action-btn" id="gsDefendQuarantineBtn">
+                                Quarantine threats
+                            </button>
+                            <button class="gsd-action-btn" id="gsDefendRemoveBtn">
+                                Remove threats
+                            </button>
+                        </div>
+                        <div id="gsDefendFooterNote">
+                            GS Defend is a fictional antivirus for this simulator. No real files are scanned or modified.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recents pill (visual only for now) -->
+            <div class="recents-strip">
+                <div class="recents-pill"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ========= CORE STATE ========= */
+const phoneScreen = document.getElementById("phoneScreen");
+const bootScreen = document.getElementById("bootScreen");
+const shutdownScreen = document.getElementById("shutdownScreen");
+const sleepOverlay = document.getElementById("sleepOverlay");
+const lockScreen = document.getElementById("lockScreen");
+const homeScreen = document.getElementById("homeScreen");
+const appScreen = document.getElementById("appScreen");
+const appTitle = document.getElementById("appTitle");
+const appBody = document.getElementById("appBody");
+const toastEl = document.getElementById("toast");
+const statusTime = document.getElementById("statusTime");
+const lockTime = document.getElementById("lockTime");
+const lockDate = document.getElementById("lockDate");
+const weatherMain = document.getElementById("weatherMain");
+const weatherSub = document.getElementById("weatherSub");
+const dropdownShade = document.getElementById("dropdownShade");
+const statusBar = document.getElementById("statusBar");
+const btnShadeClose = document.getElementById("btnShadeClose");
+const brightnessSlider = document.getElementById("brightnessSlider");
+const volumeOverlay = document.getElementById("volumeOverlay");
+const volumeFill = document.getElementById("volumeFill");
+const powerMenu = document.getElementById("powerMenu");
+const btnPower = document.getElementById("btnPower");
+const btnVolUp = document.getElementById("btnVolUp");
+const btnVolDown = document.getElementById("btnVolDown");
+const btnShutdown = document.getElementById("btnShutdown");
+const btnReboot = document.getElementById("btnReboot");
+const btnSleep = document.getElementById("btnSleep");
+const btnAppBack = document.getElementById("btnAppBack");
+const appGrid = document.getElementById("appGrid");
+
+/* Dev overlay */
+const devOverlay = document.getElementById("devOverlay");
+const devFpsBox = document.getElementById("devFpsBox");
+const devNetBox = document.getElementById("devNetBox");
+
+let currentScreen = "boot"; // boot, lock, home, app, shutdown, sleep
+let volumeLevel = 0.6;
+let devOptions = {
+    overlay: false,
+    bounds: false,
+    slowAnim: false,
+    flash: false,
+    logs: false
+};
+let devLog = [];
+let lastFrameTime = performance.now();
+
+/* ========= UTIL ========= */
+function showToast(msg, duration = 2000) {
+    toastEl.textContent = msg;
+    toastEl.style.display = "block";
+    setTimeout(() => {
+        toastEl.style.display = "none";
+    }, duration);
+}
+
+function switchScreen(target) {
+    [bootScreen, shutdownScreen, sleepOverlay, lockScreen, homeScreen, appScreen].forEach(el => {
+        if (!el) return;
+        el.classList.remove("active");
+    });
+    currentScreen = target;
+    if (target === "boot") bootScreen.classList.add("active");
+    if (target === "shutdown") shutdownScreen.classList.add("active");
+    if (target === "sleep") sleepOverlay.classList.add("active");
+    if (target === "lock") lockScreen.classList.add("active");
+    if (target === "home") homeScreen.classList.add("active");
+    if (target === "app") appScreen.classList.add("active");
+    logDev(`Screen -> ${target}`);
+}
+
+function logDev(text) {
+    if (!devOptions.logs) return;
+    const now = new Date();
+    const t = now.toTimeString().slice(0, 8);
+    devLog.unshift(`[${t}] ${text}`);
+    if (devLog.length > 40) devLog.pop();
+}
+
+/* ========= TIME & DATE ========= */
+function updateTime() {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, "0");
+    const m = now.getMinutes().toString().padStart(2, "0");
+    statusTime.textContent = `${h}:${m}`;
+    lockTime.textContent = `${h}:${m}`;
+    lockDate.textContent = now.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric"
+    });
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+/* ========= REAL WEATHER (API) ========= */
+/* You can swap this to your own API + key. This uses a free demo-style endpoint. */
+function fetchWeather() {
+    if (!navigator.geolocation) {
+        weatherSub.textContent = "Location not available";
+        return;
+    }
+    weatherSub.textContent = "Getting location…";
+    navigator.geolocation.getCurrentPosition(
+        pos => {
+            const { latitude, longitude } = pos.coords;
+            weatherSub.textContent = "Fetching weather…";
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.current_weather) {
+                        const t = Math.round(data.current_weather.temperature);
+                        const w = data.current_weather.weathercode;
+                        weatherMain.textContent = `${t}°`;
+                        weatherSub.textContent = `Real temp • Code ${w}`;
+                    } else {
+                        weatherSub.textContent = "Weather unavailable";
+                    }
+                })
+                .catch(() => {
+                    weatherSub.textContent = "Weather error";
+                });
+        },
+        () => {
+            weatherSub.textContent = "Location denied";
+        }
+    );
+}
+fetchWeather();
+
+/* ========= POWER & VOLUME ========= */
+let powerMenuVisible = false;
+let powerHoldTimeout = null;
+
+btnPower.addEventListener("mousedown", () => {
+    powerHoldTimeout = setTimeout(() => {
+        powerMenuVisible = true;
+        powerMenu.style.display = "flex";
+    }, 500);
+});
+btnPower.addEventListener("mouseup", () => {
+    clearTimeout(powerHoldTimeout);
+    if (!powerMenuVisible) {
+        // short press: wake / lock
+        if (currentScreen === "sleep") {
+            switchScreen("lock");
+            phoneScreen.classList.remove("sleeping");
+        } else if (currentScreen === "lock" || currentScreen === "home" || currentScreen === "app") {
+            switchScreen("sleep");
+            phoneScreen.classList.add("sleeping");
+        }
+    }
+});
+
+btnShutdown.addEventListener("click", () => {
+    powerMenuVisible = false;
+    powerMenu.style.display = "none";
+    switchScreen("shutdown");
+});
+btnReboot.addEventListener("click", () => {
+    powerMenuVisible = false;
+    powerMenu.style.display = "none";
+    switchScreen("boot");
+    setTimeout(() => switchScreen("lock"), 2000);
+});
+btnSleep.addEventListener("click", () => {
+    powerMenuVisible = false;
+    powerMenu.style.display = "none";
+    switchScreen("sleep");
+    phoneScreen.classList.add("sleeping");
+});
+
+function showVolumeOverlay() {
+    volumeOverlay.style.display = "flex";
+    setTimeout(() => {
+        volumeOverlay.style.display = "none";
+    }, 1200);
+}
+btnVolUp.addEventListener("click", () => {
+    volumeLevel = Math.min(1, volumeLevel + 0.1);
+    volumeFill.style.height = `${volumeLevel * 100}%`;
+    showVolumeOverlay();
+});
+btnVolDown.addEventListener("click", () => {
+    volumeLevel = Math.max(0, volumeLevel - 0.1);
+    volumeFill.style.height = `${volumeLevel * 100}%`;
+    showVolumeOverlay();
+});
+
+/* ========= QUICK SHADE & DEV OPTIONS ========= */
+statusBar.addEventListener("click", () => {
+    dropdownShade.classList.add("visible");
+});
+btnShadeClose.addEventListener("click", () => {
+    dropdownShade.classList.remove("visible");
+});
+
+dropdownShade.addEventListener("click", e => {
+    const tile = e.target.closest(".shade-tile");
+    if (!tile) return;
+    const key = tile.dataset.toggle;
+    tile.classList.toggle("active");
+    if (key === "dev") {
+        devOptions.overlay = tile.classList.contains("active");
+        devOverlay.classList.toggle("visible", devOptions.overlay);
+        showToast(devOptions.overlay ? "Dev overlay ON" : "Dev overlay OFF");
+    }
+    if (key === "bounds") {
+        devOptions.bounds = tile.classList.contains("active");
+        document.querySelector(".phone-screen").classList.toggle("dev-bounds", devOptions.bounds);
+    }
+    if (key === "slow") {
+        devOptions.slowAnim = tile.classList.contains("active");
+        phoneScreen.classList.toggle("dev-slow", devOptions.slowAnim);
+    }
+    if (key === "flash") {
+        devOptions.flash = tile.classList.contains("active");
+        phoneScreen.classList.toggle("dev-flash", devOptions.flash);
+        setTimeout(() => phoneScreen.classList.remove("dev-flash"), 400);
+    }
+    if (key === "logs") {
+        devOptions.logs = tile.classList.contains("active");
+        showToast(devOptions.logs ? "Dev logs enabled" : "Dev logs disabled");
+    }
+});
+
+brightnessSlider.addEventListener("input", () => {
+    const v = brightnessSlider.value;
+    phoneScreen.style.filter = `brightness(${v / 80})`;
+});
+
+/* ========= PIN & LOCK ========= */
+const pinPad = document.getElementById("pinPad");
+const pinDots = Array.from(document.querySelectorAll(".pin-dot"));
+const correctPin = "1234";
+let enteredPin = "";
+
+function renderPinPad() {
+    const nums = ["1","2","3","4","5","6","7","8","9","←","0","✓"];
+    nums.forEach(n => {
+        const btn = document.createElement("div");
+        btn.className = "pin-key";
+        btn.innerHTML = `<span>${n}</span>`;
+        btn.addEventListener("click", () => handlePinKey(n));
+        pinPad.appendChild(btn);
+    });
+}
+renderPinPad();
+
+function handlePinKey(key) {
+    if (key === "←") {
+        enteredPin = enteredPin.slice(0, -1);
+    } else if (key === "✓") {
+        if (enteredPin === correctPin) {
+            pinDots.forEach(d => d.classList.remove("filled"));
+            enteredPin = "";
+            switchScreen("home");
+        } else {
+            showToast("Wrong PIN");
+            enteredPin = "";
+            pinDots.forEach(d => d.classList.remove("filled"));
+        }
+        return;
+    } else if (enteredPin.length < 4 && /\d/.test(key)) {
+        enteredPin += key;
+    }
+    pinDots.forEach((d, i) => {
+        d.classList.toggle("filled", i < enteredPin.length);
+    });
+}
+
+/* ========= APP LAUNCHER ========= */
+function openApp(name) {
+    if (name === "gsdefend") {
+        openGsDefend();
+        return;
+    }
+    if (name === "store") {
+        openStore();
+        return;
+    }
+    if (name === "mail") {
+        openMail();
+        return;
+    }
+    if (name === "browser") {
+        openBrowser();
+        return;
+    }
+    if (name === "camera") {
+        openCamera();
+        return;
+    }
+    if (name === "maps") {
+        openMaps();
+        return;
+    }
+    if (name === "settings") {
+        openSettings();
+        return;
+    }
+    if (name === "messages") {
+        openMessages();
+        return;
+    }
+    if (name === "phone") {
+        openPhone();
+        return;
+    }
+    appTitle.textContent = name;
+    appBody.innerHTML = `<p>Placeholder app: ${name}</p>`;
+    switchScreen("app");
+}
+
+document.addEventListener("click", e => {
+    const icon = e.target.closest(".app-icon");
+    if (!icon) return;
+    const app = icon.dataset.app;
+    if (!app) return;
+    openApp(app);
+});
+
+btnAppBack.addEventListener("click", () => {
+    switchScreen("home");
+});
+
+/* ========= DRAG & DROP APP ICONS ========= */
+let dragSrc = null;
+
+appGrid.addEventListener("dragstart", e => {
+    const icon = e.target.closest(".app-icon");
+    if (!icon) return;
+    dragSrc = icon;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "");
+});
+
+appGrid.addEventListener("dragover", e => {
+    e.preventDefault();
+    const icon = e.target.closest(".app-icon");
+    if (!icon || icon === dragSrc) return;
+    icon.classList.add("drag-over");
+});
+
+appGrid.addEventListener("dragleave", e => {
+    const icon = e.target.closest(".app-icon");
+    if (!icon) return;
+    icon.classList.remove("drag-over");
+});
+
+appGrid.addEventListener("drop", e => {
+    e.preventDefault();
+    const icon = e.target.closest(".app-icon");
+    if (!icon || icon === dragSrc) return;
+    icon.classList.remove("drag-over");
+    const children = Array.from(appGrid.children);
+    const srcIndex = children.indexOf(dragSrc);
+    const destIndex = children.indexOf(icon);
+    if (srcIndex < destIndex) {
+        appGrid.insertBefore(dragSrc, icon.nextSibling);
+    } else {
+        appGrid.insertBefore(dragSrc, icon);
+    }
+});
+
+appGrid.addEventListener("dragend", () => {
+    dragSrc = null;
+});
+
+/* ========= SIMPLE APPS ========= */
+function openBrowser() {
+    appTitle.textContent = "Browser";
+    appBody.innerHTML = `
+        <div class="browser-input-row">
+            <input type="text" id="browserUrl" placeholder="Enter URL (simulated)" />
+            <button id="browserGo">Go</button>
+        </div>
+        <div class="list-item">
+            <div class="list-item-title">GSO Dev Docs</div>
+            <div class="list-item-sub">All traffic is simulated.</div>
+        </div>
+    `;
+    switchScreen("app");
+    document.getElementById("browserGo").onclick = () => {
+        const url = document.getElementById("browserUrl").value || "about:blank";
+        showToast(`Pretending to open ${url}`);
+    };
+}
+
+function openMessages() {
+    appTitle.textContent = "Messages";
+    appBody.innerHTML = `
+        <div class="list-item">
+            <div class="list-item-title">GSO System</div>
+            <div class="list-item-sub">Welcome to the Dev Edition.</div>
+        </div>
+        <div class="messages-input-row">
+            <input type="text" id="msgInput" placeholder="Type a message (simulated)" />
+            <button id="msgSend">Send</button>
+        </div>
+    `;
+    switchScreen("app");
+    document.getElementById("msgSend").onclick = () => {
+        const v = document.getElementById("msgInput").value;
+        if (!v) return;
+        showToast("Message sent (simulated)");
+        document.getElementById("msgInput").value = "";
+    };
+}
+
+function openPhone() {
+    appTitle.textContent = "Phone";
+    appBody.innerHTML = `
+        <div class="call-screen">
+            <div class="call-name">Dev Hotline</div>
+            <div class="call-status" id="callStatus">Ready</div>
+            <div class="call-controls">
+                <button class="call-btn accept" id="btnCall">📞</button>
+                <button class="call-btn fake" id="btnFake">🔁</button>
+                <button class="call-btn decline" id="btnEnd">✕</button>
+            </div>
+        </div>
+    `;
+    switchScreen("app");
+    const callStatus = document.getElementById("callStatus");
+    document.getElementById("btnCall").onclick = () => {
+        callStatus.textContent = "Calling… (simulated)";
+    };
+    document.getElementById("btnFake").onclick = () => {
+        callStatus.textContent = "Incoming fake call…";
+    };
+    document.getElementById("btnEnd").onclick = () => {
+        callStatus.textContent = "Call ended.";
+    };
+}
+
+function openCamera() {
+    appTitle.textContent = "Camera";
+    appBody.innerHTML = `
+        <div class="camera-preview">
+            <div class="camera-overlay-text">Live preview simulated</div>
+        </div>
+        <div class="camera-controls">
+            <div class="camera-mode">Photo</div>
+            <button class="camera-shutter" id="btnShutter"></button>
+            <div class="camera-mode">Video</div>
+        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
+    `;
+    switchScreen("app");
+    const gallery = document.getElementById("galleryGrid");
+    document.getElementById("btnShutter").onclick = () => {
+        const item = document.createElement("div");
+        item.className = "gallery-item";
+        item.textContent = "Shot " + (gallery.children.length + 1);
+        gallery.prepend(item);
+    };
+}
+
+function openMaps() {
+    appTitle.textContent = "Maps";
+    appBody.innerHTML = `
+        <div class="map-box">
+            <div class="map-marker" id="mapMarker" style="top:50%;left:50%;"></div>
+            <div class="map-label" id="mapLabel">North Bergen (simulated)</div>
+        </div>
+        <div class="list-item">
+            <div class="list-item-title">Current location</div>
+            <div class="list-item-sub">Approximate, for demo only.</div>
+        </div>
+    `;
+    switchScreen("app");
+}
+
+function openSettings() {
+    appTitle.textContent = "Settings";
+    appBody.innerHTML = `
+        <div class="app-section-title">Developer options</div>
+        <div class="settings-row">
+            <div class="settings-label">Show dev overlay</div>
+            <div class="toggle" id="togDevOverlay"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="settings-row">
+            <div class="settings-label">Show layout bounds</div>
+            <div class="toggle" id="togBounds"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="settings-row">
+            <div class="settings-label">Slow animations</div>
+            <div class="toggle" id="togSlow"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="settings-row">
+            <div class="settings-label">Flash border on actions</div>
+            <div class="toggle" id="togFlash"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="settings-row">
+            <div class="settings-label">Enable dev logs</div>
+            <div class="toggle" id="togLogs"><div class="toggle-knob"></div></div>
+        </div>
+    `;
+    switchScreen("app");
+
+    function bindToggle(id, key, extra) {
+        const el = document.getElementById(id);
+        el.addEventListener("click", () => {
+            el.classList.toggle("on");
+            devOptions[key] = el.classList.contains("on");
+            if (key === "overlay") devOverlay.classList.toggle("visible", devOptions.overlay);
+            if (key === "bounds") document.querySelector(".phone-screen").classList.toggle("dev-bounds", devOptions.bounds);
+            if (key === "slow") phoneScreen.classList.toggle("dev-slow", devOptions.slowAnim);
+            if (key === "flash") {
+                phoneScreen.classList.toggle("dev-flash", devOptions.flash);
+                setTimeout(() => phoneScreen.classList.remove("dev-flash"), 400);
+            }
+            if (key === "logs") showToast(devOptions.logs ? "Dev logs enabled" : "Dev logs disabled");
+            if (extra) extra();
+        });
+    }
+
+    bindToggle("togDevOverlay", "overlay");
+    bindToggle("togBounds", "bounds");
+    bindToggle("togSlow", "slow");
+    bindToggle("togFlash", "flash");
+    bindToggle("togLogs", "logs");
+}
+
+function openMessagesThreadWanna() {
+    // optional helper if you want SMS-triggered ransomware later
+}
+
+/* ========= MAIL + RANSOMWARE ========= */
+function openMail() {
+    appTitle.textContent = "Mail";
+    appBody.innerHTML = `
+        <div class="list-item" id="mailNormal">
+            <div class="list-item-title">GSO Dev Team</div>
+            <div class="list-item-sub">Welcome to the simulator.</div>
+        </div>
+        <div class="list-item" id="mailWanna">
+            <div class="list-item-title">Wanna Ransomware – Payment Required</div>
+            <div class="list-item-sub">Your files have been encrypted. Open for details.</div>
+            <div class="pill">Danger (fake)</div>
+        </div>
+    `;
+    switchScreen("app");
+    document.getElementById("mailWanna").onclick = () => {
+        showWannaRansom();
+    };
+}
+
+/* ========= STORE + SPYNOTE ========= */
+function openStore() {
+    appTitle.textContent = "GSO Store";
+    appBody.innerHTML = `
+        <div class="app-store-grid">
+            <div class="store-card">
+                <div class="store-card-main">
+                    <div class="store-card-title">GS Defend Antivirus</div>
+                    <div class="store-card-sub">Official system protection (simulated)</div>
+                </div>
+                <button class="store-btn installed">Open</button>
+            </div>
+            <div class="store-card">
+                <div class="store-card-main">
+                    <div class="store-card-title">SpyNote Remote Access (Fake)</div>
+                    <div class="store-card-sub">Dangerous spyware simulation. For fun only.</div>
+                    <div class="pill">Security risk (fake)</div>
+                </div>
+                <button class="store-btn" id="btnInstallSpy">Install</button>
+            </div>
+        </div>
+    `;
+    switchScreen("app");
+    const btnSpy = document.getElementById("btnInstallSpy");
+    btnSpy.onclick = () => {
+        btnSpy.textContent = "Installed";
+        btnSpy.classList.add("installed");
+        showToast("SpyNote (fake) installed");
+        logDev("SpyNote fake app installed");
+    };
+}
+
+/* ========= GS DEFEND & RANSOMWARE LOGIC ========= */
+const wannaOverlay = document.getElementById("wannaRansomOverlay");
+const wannaTimerEl = document.getElementById("wannaRansomTimer");
+const btnWannaPaid = document.getElementById("btnWannaPaid");
+const btnWannaOpenGS = document.getElementById("btnWannaOpenGS");
+const wannaStatus = document.getElementById("wannaStatus");
+
+let wannaTimerSeconds = 24 * 60 * 60 - 1;
+let wannaTimerInterval = null;
+let wannaUnlocked = false;
+let wannaFakePaid = false;
+
+function showWannaRansom() {
+    wannaOverlay.style.display = "flex";
+    startWannaTimer();
+    setWannaStatus("Your files are locked. Follow the instructions above.");
+    logDev("Wanna Ransomware overlay shown");
+}
+function hideWannaRansom() {
+    wannaOverlay.style.display = "none";
+    if (wannaTimerInterval) {
+        clearInterval(wannaTimerInterval);
+        wannaTimerInterval = null;
+    }
+}
+function startWannaTimer() {
+    if (wannaTimerInterval) clearInterval(wannaTimerInterval);
+    function update() {
+        const h = String(Math.floor(wannaTimerSeconds / 3600)).padStart(2, "0");
+        const m = String(Math.floor((wannaTimerSeconds % 3600) / 60)).padStart(2, "0");
+        const s = String(wannaTimerSeconds % 60).padStart(2, "0");
+        wannaTimerEl.textContent = `Time left: ${h}:${m}:${s}`;
+        if (wannaTimerSeconds > 0) wannaTimerSeconds--;
+    }
+    update();
+    wannaTimerInterval = setInterval(update, 1000);
+}
+function setWannaStatus(msg) {
+    wannaStatus.textContent = msg;
+}
+
+btnWannaPaid.addEventListener("click", () => {
+    if (wannaUnlocked) {
+        setWannaStatus("System already unlocked by GS Defend.");
+        return;
+    }
+    wannaFakePaid = true;
+    setWannaStatus("Payment detected (simulated). Verifying blockchain…");
+    setTimeout(() => {
+        setWannaStatus("Payment confirmed (fictional). Unlocking your system…");
+        setTimeout(() => {
+            wannaUnlocked = true;
+            hideWannaRansom();
+            logDev("User 'paid' fake BTC. System unlocked.");
+        }, 1200);
+    }, 1500);
+});
+btnWannaOpenGS.addEventListener("click", () => {
+    openGsDefend();
+    setWannaStatus("GS Defend opened. Run a scan to remove Wanna Ransomware (simulated).");
+});
+
+/* GS Defend */
+const gsDefendApp = document.getElementById("gsDefendApp");
+const gsDefendClose = document.getElementById("gsDefendClose");
+const gsDefendScanButton = document.getElementById("gsDefendScanButton");
+const gsDefendScanStatus = document.getElementById("gsDefendScanStatus");
+const gsDefendThreatList = document.getElementById("gsDefendThreatList");
+const gsDefendQuarantineBtn = document.getElementById("gsDefendQuarantineBtn");
+const gsDefendRemoveBtn = document.getElementById("gsDefendRemoveBtn");
+
+let gsDefendThreats = [];
+let gsDefendScanInProgress = false;
+
+function openGsDefend() {
+    gsDefendApp.style.display = "flex";
+}
+function closeGsDefend() {
+    gsDefendApp.style.display = "none";
+}
+gsDefendClose.addEventListener("click", closeGsDefend);
+
+gsDefendScanButton.addEventListener("click", () => {
+    if (gsDefendScanInProgress) return;
+    gsDefendScanInProgress = true;
+    gsDefendScanStatus.textContent = "Scanning system for threats (simulated)…";
+    gsDefendThreatList.innerHTML = "";
+    let progress = 0;
+    const steps = [12, 37, 68, 92, 100];
+    let idx = 0;
+    const interval = setInterval(() => {
+        progress = steps[idx];
+        idx++;
+        gsDefendScanStatus.textContent = `Scanning… ${progress}% (simulated)`;
+        if (idx >= steps.length) {
+            clearInterval(interval);
+            finishGsDefendScan();
+        }
+    }, 600);
+});
+
+function finishGsDefendScan() {
+    gsDefendScanInProgress = false;
+    gsDefendThreats = [
+        {
+            name: "Wanna Ransomware",
+            path: "system://lockscreen/wanna_ransomware.sim",
+            status: "Active (simulated)"
+        },
+        {
+            name: "SpyNote Remote Access (Fake)",
+            path: "apps://store/SpyNote_Fake.sim",
+            status: "Installed (simulated)"
+        }
+    ];
+    gsDefendScanStatus.textContent = "Scan complete. Threats found (simulated).";
+    renderGsDefendThreats();
+}
+
+function renderGsDefendThreats() {
+    gsDefendThreatList.innerHTML = "";
+    if (!gsDefendThreats.length) {
+        gsDefendThreatList.textContent = "No active threats detected (simulated).";
+        return;
+    }
+    gsDefendThreats.forEach(t => {
+        const item = document.createElement("div");
+        item.className = "gsd-threat-item";
+        item.innerHTML = `
+            <div class="gsd-threat-name">${t.name}</div>
+            <div class="gsd-threat-path">${t.path}</div>
+            <div class="gsd-threat-status">${t.status}</div>
+        `;
+        gsDefendThreatList.appendChild(item);
+    });
+}
+
+gsDefendQuarantineBtn.addEventListener("click", () => {
+    if (!gsDefendThreats.length) return;
+    gsDefendThreats = gsDefendThreats.map(t => ({
+        ...t,
+        status: "Quarantined (simulated)"
+    }));
+    renderGsDefendThreats();
+});
+
+gsDefendRemoveBtn.addEventListener("click", () => {
+    if (!gsDefendThreats.length) return;
+    gsDefendThreats = [];
+    renderGsDefendThreats();
+    gsDefendScanStatus.textContent = "All detected threats removed (simulated).";
+    if (!wannaUnlocked) {
+        wannaUnlocked = true;
+        hideWannaRansom();
+        logDev("GS Defend removed Wanna Ransomware (simulated). System unlocked.");
+    }
+});
+
+/* ========= DEV OVERLAY LOOP ========= */
+function devLoop(now) {
+    const dt = now - lastFrameTime;
+    lastFrameTime = now;
+    const fps = Math.round(1000 / dt);
+    if (devOptions.overlay) {
+        devFpsBox.textContent = `FPS: ${fps} • CPU: ${(20 + Math.random() * 20).toFixed(0)}%`;
+        devNetBox.textContent = `Net: Wi‑Fi • Ping: ${(20 + Math.random() * 40).toFixed(0)}ms`;
+    }
+    requestAnimationFrame(devLoop);
+}
+requestAnimationFrame(devLoop);
+
+/* ========= BOOT SEQUENCE ========= */
+setTimeout(() => {
+    switchScreen("lock");
+}, 2000);
+</script>
+</body>
+</html>
