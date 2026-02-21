@@ -24,6 +24,11 @@
         color: #fff;
     }
 
+    @keyframes virusBlink {
+        0%, 100% { opacity: 0.55; }
+        50% { opacity: 1; }
+    }
+
     .phone-frame {
         position: relative;
         width: 380px;
@@ -1569,6 +1574,7 @@
         { id: 'calendar', name: 'Calendar', icon: '📅', type: 'tools', dock: false },
         { id: 'settings', name: 'Settings', icon: '⚙️', type: 'system', dock: false },
         { id: 'store', name: 'GSO Store', icon: '🛒', type: 'store', dock: false },
+        { id: 'virusPrank', name: 'Virus Prank', icon: '🦠', type: 'tools', dock: false },
 
         // Dev-only apps (visible when devMode is true)
         { id: 'sysLogs', name: 'System Logs', icon: '📋', type: 'tools', dock: false, devOnly: true },
@@ -2125,6 +2131,9 @@
             case 'store':
                 renderStoreApp();
                 break;
+            case 'virusPrank':
+                renderVirusPrankApp();
+                break;
             case 'gamesHub':
                 renderGamesHubApp();
                 break;
@@ -2478,6 +2487,19 @@
                 <div class="list-item-sub">Save a JSON file of your GSO Phone state.</div>
             </div>
             <button class="btn btn-secondary" id="btnExportState" style="margin-top:6px;">Download JSON</button>
+
+            <div class="app-section-title" style="margin-top:10px;">Local files (simulated)</div>
+            <div class="list-item" style="border-color:rgba(255,80,80,0.45); background:rgba(120,10,10,0.2);">
+                <div class="list-item-title">🦠 FakeVirushtml.txt</div>
+                <div class="list-item-sub">Harmless HTML/CSS/JS demo file with fake-virus style UI</div>
+            </div>
+            <button class="btn btn-secondary" id="btnOpenVirusFile" style="margin-top:6px;">Open FakeVirushtml.txt</button>
+            <button class="btn btn-secondary" id="btnDownloadVirusFile" style="margin-top:6px;">Download FakeVirushtml.txt</button>
+            <div id="virusFilePanel" style="display:none; margin-top:8px; padding:10px; border-radius:10px; border:1px dashed rgba(255,80,80,0.55); background:rgba(60,0,0,0.35); color:#ffb3b3;">
+                <div style="font-weight:700; text-align:center; animation: virusBlink 0.6s infinite;">SIMULATED THREAT FILE DETECTED</div>
+                <div style="font-size:11px; margin-top:6px; opacity:0.95;">Loaded from FakeVirushtml.txt. This is only HTML, CSS, and JavaScript for UI testing.</div>
+                <pre id="virusFilePreview" style="margin-top:8px; white-space:pre-wrap; font-size:10px; max-height:120px; overflow:auto; background:rgba(0,0,0,0.35); border-radius:8px; padding:8px;"></pre>
+            </div>
         `;
         const storageFill = document.getElementById('storageFill');
         const storageUsedLabel = document.getElementById('storageUsedLabel');
@@ -2486,6 +2508,52 @@
         storageUsedLabel.textContent = usedGB + ' GB';
 
         const btnExport = document.getElementById('btnExportState');
+        const btnOpenVirusFile = document.getElementById('btnOpenVirusFile');
+        const btnDownloadVirusFile = document.getElementById('btnDownloadVirusFile');
+        const virusFilePanel = document.getElementById('virusFilePanel');
+        const virusFilePreview = document.getElementById('virusFilePreview');
+        const fakeVirusHtmlFile = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fake Virus Alert (Simulation)</title>
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #130404;
+    color: #ffd2d2;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+  }
+  .panel {
+    width: min(460px, 92vw);
+    border: 1px dashed rgba(255, 80, 80, 0.65);
+    border-radius: 12px;
+    padding: 14px;
+    background: rgba(150, 20, 20, 0.18);
+  }
+  .title {
+    text-align: center;
+    font-weight: 800;
+    letter-spacing: .04em;
+    animation: blink .6s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: .55; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="title">SIMULATED VIRUS FILE</div>
+    <p>This is a harmless UI demo file for GSO Phone.</p>
+    <button onclick="alert('No real malware. Demo only ✅')">Run fake scan</button>
+  </div>
+</body>
+</html>`;
         btnExport.onclick = () => {
             const data = JSON.stringify(state, null, 2);
             const blob = new Blob([data], { type: 'application/json' });
@@ -2498,6 +2566,27 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             logEvent('State exported as JSON');
+        };
+
+        btnOpenVirusFile.onclick = () => {
+            virusFilePanel.style.display = 'block';
+            virusFilePreview.textContent = fakeVirusHtmlFile;
+            showToast('FakeVirushtml.txt opened (simulated)');
+            logEvent('Files: FakeVirushtml.txt opened (simulated)');
+        };
+
+        btnDownloadVirusFile.onclick = () => {
+            const blob = new Blob([fakeVirusHtmlFile], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'FakeVirushtml.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('FakeVirushtml.txt downloaded');
+            logEvent('Files: FakeVirushtml.txt downloaded');
         };
     }
 
@@ -2730,8 +2819,51 @@
                 <div class="list-item-title">welcome@gso.phone</div>
                 <div class="list-item-sub">"Thanks for trying the GSO Phone simulator."</div>
             </div>
+            <div class="list-item" style="border-color: rgba(255,80,80,0.45); background: rgba(120,10,10,0.2); margin-top:8px;">
+                <div class="list-item-title">security-center@gs0-alerts.biz</div>
+                <div class="list-item-sub">⚠️ Scam email: "URGENT! Open FakeVirushtml.txt attachment now!"</div>
+            </div>
+            <button class="btn btn-secondary" id="btnOpenScamAttachment" style="margin-top:6px;">Open attachment (simulated scam)</button>
             <div class="sleep-hint">No emails are sent or received. This is all UI.</div>
         `;
+
+        const btnOpenScamAttachment = document.getElementById('btnOpenScamAttachment');
+        btnOpenScamAttachment.onclick = () => {
+            showToast('Scam attachment opened (simulation)');
+            logEvent('GSO Mail: simulated scam attachment opened');
+            openApp('virusPrank');
+        };
+    }
+
+    function renderVirusPrankApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Fake Virus Simulator</div>
+            <div class="list-item" style="border-color: rgba(255,70,70,0.5); background: rgba(180,20,20,0.25);">
+                <div class="list-item-title">⚠️ Fake system warning</div>
+                <div class="list-item-sub">No real malware exists here. This screen is only a prank animation.</div>
+            </div>
+            <div style="margin: 10px 0 12px; padding: 10px; border-radius: 10px; border: 1px dashed rgba(255,80,80,0.55); color: #ffaaaa; background: rgba(60,0,0,0.35); text-align:center; font-weight:600; letter-spacing:0.04em; animation: virusBlink 0.6s infinite;">SIMULATED VIRUS DETECTED</div>
+            <button class="btn btn-secondary" id="btnRunScan" style="width:100%;">Run fake antivirus scan</button>
+            <div class="sleep-hint" id="virusHint">Tap scan to remove the pretend virus.</div>
+        `;
+        const btnRunScan = document.getElementById('btnRunScan');
+        const virusHint = document.getElementById('virusHint');
+        btnRunScan.onclick = () => {
+            btnRunScan.disabled = true;
+            btnRunScan.textContent = 'Scanning...';
+            let progress = 0;
+            const timer = setInterval(() => {
+                progress += 20;
+                btnRunScan.textContent = `Scanning... ${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(timer);
+                    btnRunScan.textContent = 'Threat removed (fake)';
+                    virusHint.textContent = 'All good. The prank virus has been neutralized.';
+                    showToast('Fake virus removed ✅');
+                    logEvent('Virus Prank app: simulated scan complete');
+                }
+            }, 260);
+        };
     }
 
     function renderSysLogsApp() {
