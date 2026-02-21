@@ -4,19 +4,23 @@
 <meta charset="UTF-8">
 <title>GSO Phone Simulator – Dev Edition</title>
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap');
+
     :root {
         --anim-speed: 0.25s;
+        --android-blue: #1a73e8;
+        --android-surface: #101114;
     }
 
     * {
         box-sizing: border-box;
         margin: 0;
         padding: 0;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "Google Sans", "Segoe UI", Roboto, Arial, sans-serif;
     }
 
     body {
-        background: radial-gradient(circle at top, #333 0, #000 60%);
+        background: radial-gradient(circle at top, #1d2430 0, #0a0d13 65%);
         height: 100vh;
         display: flex;
         align-items: center;
@@ -33,19 +37,19 @@
         position: relative;
         width: 380px;
         height: 720px;
-        border-radius: 40px;
-        background: #111;
-        box-shadow: 0 0 0 8px #000, 0 20px 60px rgba(0,0,0,0.8);
-        overflow: hidden;
-        border: 2px solid #333;
+        border-radius: 28px;
+        background: #161a22;
+        box-shadow: 0 0 0 6px #0a0a0a, 0 22px 60px rgba(0,0,0,0.8);
+        overflow: visible;
+        border: 2px solid #2f3542;
     }
 
     .phone-screen {
         position: absolute;
-        inset: 16px;
-        border-radius: 28px;
+        inset: 10px;
+        border-radius: 20px;
         overflow: hidden;
-        background: radial-gradient(circle at top, #2b4b7a, #050814 60%, #000);
+        background: radial-gradient(circle at top, #233a61, #0a1220 58%, #05070b);
         display: flex;
         flex-direction: column;
         transition: filter var(--anim-speed) ease, transform var(--anim-speed) ease, box-shadow var(--anim-speed) ease;
@@ -71,12 +75,25 @@
 
     .side-button {
         position: absolute;
-        width: 4px;
-        height: 60px;
-        background: #333;
-        border-radius: 4px;
+        width: 8px;
+        height: 74px;
+        background: linear-gradient(to bottom, #5f6b7d, #303745);
+        border-radius: 8px;
         cursor: pointer;
         transition: transform 0.15s ease, background 0.15s ease;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.45);
+    }
+
+    .side-button::before {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 9px;
+        color: rgba(255,255,255,0.62);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        pointer-events: none;
     }
 
     .side-button:active {
@@ -85,30 +102,43 @@
     }
 
     .side-button.power {
-        right: -4px;
-        top: 140px;
-        height: 70px;
+        right: -8px;
+        top: 190px;
+        height: 86px;
+    }
+
+    .side-button.power::before {
+        content: "Power";
+        left: -46px;
     }
 
     .side-button.vol-up {
-        left: -4px;
-        top: 140px;
+        left: -8px;
+        top: 178px;
+    }
+
+    .side-button.vol-up::before {
+        content: "Vol +";
     }
 
     .side-button.vol-down {
-        left: -4px;
-        top: 210px;
+        left: -8px;
+        top: 264px;
+    }
+
+    .side-button.vol-down::before {
+        content: "Vol -";
     }
 
     .status-bar {
-        height: 32px;
-        padding: 4px 10px 0 10px;
+        height: 30px;
+        padding: 6px 12px 0 12px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         color: #eee;
         font-size: 11px;
-        background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+        background: linear-gradient(to bottom, rgba(0,0,0,0.56), rgba(0,0,0,0.12));
         z-index: 10;
         position: relative;
         cursor: pointer;
@@ -820,17 +850,19 @@
     }
 
     .store-card {
-        padding: 8px;
-        border-radius: 12px;
-        background: rgba(255,255,255,0.03);
+        padding: 10px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        transition: background 0.18s ease, transform 0.18s ease;
+        transition: background 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
     }
 
     .store-card:hover {
-        background: rgba(255,255,255,0.06);
+        background: rgba(26,115,232,0.12);
+        border-color: rgba(26,115,232,0.4);
         transform: translateY(-1px);
     }
 
@@ -848,18 +880,20 @@
     }
 
     .store-btn {
-        padding: 4px 10px;
+        padding: 6px 14px;
         border-radius: 999px;
         border: none;
         font-size: 11px;
+        font-weight: 700;
         cursor: pointer;
-        background: #4caf50;
+        background: var(--android-blue);
         color: #fff;
         transition: background 0.15s ease, transform 0.12s ease;
     }
 
     .store-btn.installed {
-        background: rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.15);
+        color: #d7e3ff;
     }
 
     .store-btn:active {
@@ -1605,7 +1639,7 @@
         { id: 'notes', name: 'Notes', icon: '📝', type: 'tools', dock: false },
         { id: 'calendar', name: 'Calendar', icon: '📅', type: 'tools', dock: false },
         { id: 'settings', name: 'Settings', icon: '⚙️', type: 'system', dock: false },
-        { id: 'store', name: 'GSO Store', icon: '🛒', type: 'store', dock: false },
+        { id: 'store', name: 'GS Play Store', icon: '🛍️', type: 'store', dock: false },
         { id: 'virusPrank', name: 'Virus Prank', icon: '🦠', type: 'tools', dock: false },
         { id: 'gsDefence', name: 'GS Defence', icon: '🛡️', type: 'tools', dock: false },
         { id: 'wannaCrySim', name: 'WannaCry Sim', icon: '🔒', type: 'tools', dock: false },
@@ -1830,7 +1864,7 @@
         if (!state.poweredOn) return;
         const pool = [
             ['GSO System', 'Background tasks completed successfully.'],
-            ['GSO Store', 'New apps are available for download.'],
+            ['GS Play Store', 'New apps are available for download.'],
             ['Weather Pro+', 'Check detailed forecast in the Weather Pro+ app.'],
             ['GSO Assistant', 'You have 0 unread real messages.'],
             ['Battery', 'Battery health is excellent.']
@@ -2793,7 +2827,9 @@
 
     function renderStoreApp() {
         appBody.innerHTML = `
-            <div class="app-section-title">Featured apps</div>
+            <div class="app-section-title">GS Play Store</div>
+            <div class="sleep-hint" style="margin-bottom:8px;">Android-style app marketplace (simulated)</div>
+            <div class="pill" style="margin-bottom:8px; border-color: rgba(26,115,232,0.55); color:#9fc2ff;">For you</div>
             <div class="app-store-grid" id="storeGrid"></div>
         `;
         const grid = document.getElementById('storeGrid');
@@ -2807,7 +2843,7 @@
                     <div class="store-card-sub">${app.desc}</div>
                 </div>
                 <button class="store-btn ${installed ? 'installed' : ''}" data-app-id="${app.id}">
-                    ${installed ? 'Installed' : 'Get'}
+                    ${installed ? 'Installed' : 'Install'}
                 </button>
             `;
             grid.appendChild(card);
