@@ -614,6 +614,19 @@
         flex-direction: column;
     }
 
+    .app-body {
+        animation: appFadeIn 0.24s ease;
+    }
+
+    .app-body.animate-in {
+        animation: appFadeIn 0.24s ease;
+    }
+
+    @keyframes appFadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     .app-header {
         padding: 8px 10px;
         display: flex;
@@ -1695,7 +1708,9 @@
         gameGuessBest: null,
         gsoCoins: 500,
         ransomwareActive: false,
-        oneUiMode: false
+        oneUiMode: false,
+        voiceMemos: [],
+        fakeAlarms: []
     };
 
     const apps = [
@@ -1710,6 +1725,10 @@
         { id: 'files', name: 'Files', icon: '📁', type: 'tools', dock: false },
         { id: 'notes', name: 'Notes', icon: '📝', type: 'tools', dock: false },
         { id: 'calendar', name: 'Calendar', icon: '📅', type: 'tools', dock: false },
+        { id: 'clock', name: 'Clock', icon: '🕒', type: 'tools', dock: false },
+        { id: 'calculator', name: 'Calculator', icon: '🧮', type: 'tools', dock: false },
+        { id: 'recorder', name: 'Recorder', icon: '🎙️', type: 'tools', dock: false },
+        { id: 'alarm', name: 'Alarm', icon: '⏰', type: 'tools', dock: false },
         { id: 'settings', name: 'Settings', icon: '⚙️', type: 'system', dock: false },
         { id: 'store', name: 'GS Play Store', icon: '🛍️', type: 'store', dock: false },
         { id: 'virusPrank', name: 'Virus Prank', icon: '🦠', type: 'tools', dock: false },
@@ -1786,7 +1805,9 @@
             gameGuessBest: state.gameGuessBest,
             gsoCoins: state.gsoCoins,
             ransomwareActive: state.ransomwareActive,
-            oneUiMode: state.oneUiMode
+            oneUiMode: state.oneUiMode,
+            voiceMemos: state.voiceMemos,
+            fakeAlarms: state.fakeAlarms
         };
         try {
             localStorage.setItem(LS_KEY, JSON.stringify(toSave));
@@ -2329,6 +2350,18 @@
             case 'calendar':
                 renderCalendarApp();
                 break;
+            case 'clock':
+                renderClockApp();
+                break;
+            case 'calculator':
+                renderCalculatorApp();
+                break;
+            case 'recorder':
+                renderRecorderApp();
+                break;
+            case 'alarm':
+                renderAlarmApp();
+                break;
             case 'settings':
                 renderSettingsApp();
                 break;
@@ -2395,6 +2428,8 @@
             default:
                 appBody.innerHTML = '<p>This app is simulated but has no UI yet.</p>';
         }
+        appBody.classList.remove('animate-in');
+        requestAnimationFrame(() => appBody.classList.add('animate-in'));
     }
 
     function renderPhoneApp() {
@@ -2868,6 +2903,112 @@
                 <div class="list-item-sub">Try power menu, volume, store, maps, and Dev Options.</div>
             </div>
         `;
+    }
+
+    function renderClockApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Clock</div>
+            <div class="list-item"><div class="list-item-title" id="clockNow" style="font-size:24px;">--:--:--</div><div class="list-item-sub" id="clockDateLine">Loading date...</div></div>
+            <div class="sleep-hint">World clock and stopwatch are simulated.</div>
+        `;
+        const nowEl = document.getElementById('clockNow');
+        const dateEl = document.getElementById('clockDateLine');
+        function tick() {
+            if (state.currentApp !== 'clock') return;
+            const d = new Date();
+            nowEl.textContent = d.toLocaleTimeString();
+            dateEl.textContent = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+            setTimeout(tick, 1000);
+        }
+        tick();
+    }
+
+    function renderCalculatorApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Calculator</div>
+            <input id="calcDisplay" value="" readonly style="width:100%;padding:10px;border-radius:10px;border:none;background:rgba(255,255,255,0.1);color:#fff;font-size:20px;text-align:right;" />
+            <div id="calcGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px;"></div>
+        `;
+        const keys = ['7','8','9','/','4','5','6','*','1','2','3','-','0','.','=','+'];
+        const grid = document.getElementById('calcGrid');
+        const disp = document.getElementById('calcDisplay');
+        keys.forEach(k => {
+            const b = document.createElement('button');
+            b.className = 'btn btn-secondary';
+            b.textContent = k;
+            b.onclick = () => {
+                if (k === '=') {
+                    try { disp.value = String(Function('return (' + (disp.value || '0') + ')')()); } catch { disp.value = 'Error'; }
+                    return;
+                }
+                disp.value += k;
+            };
+            grid.appendChild(b);
+        });
+    }
+
+    function renderRecorderApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Voice Recorder</div>
+            <button class="btn btn-secondary" id="btnRecordMemo" style="width:100%;">Record memo (simulated)</button>
+            <div id="memoList" style="margin-top:8px;"></div>
+        `;
+        const list = document.getElementById('memoList');
+        function draw() {
+            list.innerHTML = '';
+            if (!state.voiceMemos.length) {
+                list.innerHTML = '<div class="sleep-hint">No recordings yet.</div>';
+                return;
+            }
+            state.voiceMemos.slice().reverse().forEach(m => {
+                const row = document.createElement('div');
+                row.className = 'list-item';
+                row.innerHTML = `<div class="list-item-title">${m.name}</div><div class="list-item-sub">${m.time}</div>`;
+                list.appendChild(row);
+            });
+        }
+        document.getElementById('btnRecordMemo').onclick = () => {
+            const d = new Date();
+            state.voiceMemos.push({ name: 'Memo #' + (state.voiceMemos.length + 1), time: d.toLocaleTimeString() });
+            if (state.voiceMemos.length > 20) state.voiceMemos.shift();
+            saveState();
+            showToast('Voice memo saved (simulated)');
+            draw();
+        };
+        draw();
+    }
+
+    function renderAlarmApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Alarm</div>
+            <input id="alarmInput" type="time" style="width:100%;padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#fff;" />
+            <button class="btn btn-secondary" id="btnAddAlarm" style="margin-top:6px;width:100%;">Add alarm</button>
+            <div id="alarmList" style="margin-top:8px;"></div>
+        `;
+        const list = document.getElementById('alarmList');
+        function draw() {
+            list.innerHTML = '';
+            if (!state.fakeAlarms.length) {
+                list.innerHTML = '<div class="sleep-hint">No alarms set.</div>';
+                return;
+            }
+            state.fakeAlarms.forEach((a, i) => {
+                const row = document.createElement('div');
+                row.className = 'list-item';
+                row.innerHTML = `<div class="list-item-title">${a}</div><div class="list-item-sub">Daily • simulated</div>`;
+                row.onclick = () => { state.fakeAlarms.splice(i,1); saveState(); draw(); };
+                list.appendChild(row);
+            });
+        }
+        document.getElementById('btnAddAlarm').onclick = () => {
+            const v = document.getElementById('alarmInput').value;
+            if (!v) return showToast('Pick a time first');
+            state.fakeAlarms.push(v);
+            saveState();
+            showToast('Alarm added');
+            draw();
+        };
+        draw();
     }
 
     function renderSettingsApp() {
