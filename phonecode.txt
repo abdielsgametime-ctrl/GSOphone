@@ -24,6 +24,11 @@
         color: #fff;
     }
 
+    @keyframes virusBlink {
+        0%, 100% { opacity: 0.55; }
+        50% { opacity: 1; }
+    }
+
     .phone-frame {
         position: relative;
         width: 380px;
@@ -439,6 +444,29 @@
         grid-template-columns: repeat(4, 1fr);
         gap: 10px;
         margin-top: 10px;
+        min-height: 172px;
+    }
+
+    .app-pager {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .pager-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.35);
+        border: none;
+        cursor: pointer;
+        transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .pager-dot.active {
+        background: #fff;
+        transform: scale(1.15);
     }
 
     .app-icon {
@@ -1402,6 +1430,7 @@
                         </div>
                     </div>
                     <div class="app-grid" id="appGrid"></div>
+                    <div class="app-pager" id="appPager"></div>
                 </div>
                 <div>
                     <div class="dock" id="dock"></div>
@@ -1494,6 +1523,7 @@
     const pinPad = document.getElementById('pinPad');
 
     const appGrid = document.getElementById('appGrid');
+    const appPager = document.getElementById('appPager');
     const dock = document.getElementById('dock');
 
     const devOverlay = document.getElementById('devOverlay');
@@ -1505,6 +1535,8 @@
     let fpsFrames = 0;
     let fpsValue = 0;
     let cpuValue = 0;
+    const APPS_PER_PAGE = 8;
+    let homeSwipeStartX = null;
 
     let state = {
         poweredOn: true,
@@ -1545,6 +1577,7 @@
         notesText: '',
         storeInstalled: {},
         messages: [],
+        homePage: 0,
         appOrder: null,
         logs: [],
         devShowFps: true,
@@ -1553,7 +1586,11 @@
         devShowCpu: true,
         devShowNetDebug: true,
         devSlowAnimations: false,
-        devDebugFlashes: true
+        devDebugFlashes: true,
+        gameTapBest: 0,
+        gameGuessBest: null,
+        gsoCoins: 500,
+        ransomwareActive: false
     };
 
     const apps = [
@@ -1569,6 +1606,9 @@
         { id: 'calendar', name: 'Calendar', icon: '📅', type: 'tools', dock: false },
         { id: 'settings', name: 'Settings', icon: '⚙️', type: 'system', dock: false },
         { id: 'store', name: 'GSO Store', icon: '🛒', type: 'store', dock: false },
+        { id: 'virusPrank', name: 'Virus Prank', icon: '🦠', type: 'tools', dock: false },
+        { id: 'gsDefence', name: 'GS Defence', icon: '🛡️', type: 'tools', dock: false },
+        { id: 'wannaCrySim', name: 'WannaCry Sim', icon: '🔒', type: 'tools', dock: false },
 
         // Dev-only apps (visible when devMode is true)
         { id: 'sysLogs', name: 'System Logs', icon: '📋', type: 'tools', dock: false, devOnly: true },
@@ -1581,7 +1621,8 @@
         { id: 'socialPlus', name: 'Social+', desc: 'All your imaginary friends in one place.' },
         { id: 'cryptoWatch', name: 'CryptoWatch', desc: 'Track fake coins to the fake moon.' },
         { id: 'weatherPro', name: 'Weather Pro+', desc: 'Hyper-detailed simulated forecasts.' },
-        { id: 'gsoMail', name: 'GSO Mail', desc: 'Email client that never actually sends.' }
+        { id: 'gsoMail', name: 'GSO Mail', desc: 'Email client that never actually sends.' },
+        { id: 'replicaLab', name: 'Replica Lab', desc: 'Build harmless fake-clone profiles for UI demos.' }
     ];
 
     function logEvent(text) {
@@ -1589,6 +1630,13 @@
         const time = now.toLocaleTimeString(undefined, { hour12: false });
         state.logs.unshift({ time, text });
         if (state.logs.length > 200) state.logs.pop();
+    }
+
+    function clearRansomware(reason) {
+        state.ransomwareActive = false;
+        saveState();
+        showToast('Ransomware removed (simulated)');
+        logEvent('Ransomware removed via ' + reason);
     }
 
     function saveState() {
@@ -1611,6 +1659,7 @@
             notesText: state.notesText,
             storeInstalled: state.storeInstalled,
             messages: state.messages,
+            homePage: state.homePage,
             appOrder: state.appOrder,
             logs: state.logs,
             devShowFps: state.devShowFps,
@@ -1619,7 +1668,11 @@
             devShowCpu: state.devShowCpu,
             devShowNetDebug: state.devShowNetDebug,
             devSlowAnimations: state.devSlowAnimations,
-            devDebugFlashes: state.devDebugFlashes
+            devDebugFlashes: state.devDebugFlashes,
+            gameTapBest: state.gameTapBest,
+            gameGuessBest: state.gameGuessBest,
+            gsoCoins: state.gsoCoins,
+            ransomwareActive: state.ransomwareActive
         };
         try {
             localStorage.setItem(LS_KEY, JSON.stringify(toSave));
@@ -1964,13 +2017,29 @@
         ensureAppOrder();
         appGrid.innerHTML = '';
         dock.innerHTML = '';
+        appPager.innerHTML = '';
 
         const orderMap = {};
         state.appOrder.forEach((id, idx) => orderMap[id] = idx);
 
         const sortedApps = [...apps].filter(a => !a.devOnly || state.devMode).sort((a, b) => orderMap[a.id] - orderMap[b.id]);
+        const installedStoreApps = storeApps.filter(app => state.storeInstalled[app.id]).map(app => ({
+            id: app.id,
+            name: app.name,
+            icon: '★',
+            type: 'tools',
+            dock: false
+        }));
+        const homeApps = [...sortedApps, ...installedStoreApps];
 
-        sortedApps.forEach(app => {
+        const totalPages = Math.max(1, Math.ceil(homeApps.length / APPS_PER_PAGE));
+        if (state.homePage >= totalPages) state.homePage = totalPages - 1;
+        if (state.homePage < 0) state.homePage = 0;
+
+        const pageStart = state.homePage * APPS_PER_PAGE;
+        const pageApps = homeApps.slice(pageStart, pageStart + APPS_PER_PAGE);
+
+        pageApps.forEach(app => {
             const icon = document.createElement('div');
             icon.className = 'app-icon';
             icon.dataset.appId = app.id;
@@ -1982,31 +2051,39 @@
                 <div>${app.name}</div>
             `;
             appGrid.appendChild(icon);
+        });
 
+        sortedApps.forEach(app => {
             if (app.dock) {
-                const dockIcon = icon.cloneNode(true);
+                const dockIcon = document.createElement('div');
+                dockIcon.className = 'app-icon';
+                dockIcon.dataset.appId = app.id;
                 dockIcon.draggable = false;
+                dockIcon.innerHTML = `
+                    <div class="app-icon-circle ${app.type}">
+                        <span>${app.icon}</span>
+                    </div>
+                    <div>${app.name}</div>
+                `;
                 dock.appendChild(dockIcon);
             }
         });
 
-        initAppDragAndDrop();
-
-        storeApps.forEach(app => {
-            if (state.storeInstalled[app.id]) {
-                const icon = document.createElement('div');
-                icon.className = 'app-icon';
-                icon.dataset.appId = app.id;
-                icon.draggable = true;
-                icon.innerHTML = `
-                    <div class="app-icon-circle tools">
-                        <span>★</span>
-                    </div>
-                    <div>${app.name}</div>
-                `;
-                appGrid.appendChild(icon);
+        if (totalPages > 1) {
+            for (let i = 0; i < totalPages; i++) {
+                const dot = document.createElement('button');
+                dot.className = 'pager-dot' + (i === state.homePage ? ' active' : '');
+                dot.setAttribute('aria-label', `Go to page ${i + 1}`);
+                dot.onclick = () => {
+                    state.homePage = i;
+                    saveState();
+                    renderApps();
+                };
+                appPager.appendChild(dot);
             }
-        });
+        }
+
+        initAppDragAndDrop();
     }
 
     let dragSourceId = null;
@@ -2125,6 +2202,15 @@
             case 'store':
                 renderStoreApp();
                 break;
+            case 'virusPrank':
+                renderVirusPrankApp();
+                break;
+            case 'gsDefence':
+                renderGsDefenceApp();
+                break;
+            case 'wannaCrySim':
+                renderWannaCrySimApp();
+                break;
             case 'gamesHub':
                 renderGamesHubApp();
                 break;
@@ -2139,6 +2225,9 @@
                 break;
             case 'gsoMail':
                 renderGsoMailApp();
+                break;
+            case 'replicaLab':
+                renderReplicaLabApp();
                 break;
             case 'sysLogs':
                 renderSysLogsApp();
@@ -2466,6 +2555,7 @@
             <div style="font-size:11px;opacity:0.8;">
                 Storage usage is simulated based on your fake photos and apps.
             </div>
+            ${state.ransomwareActive ? '<div style="margin-top:6px; font-size:11px; color:#ffaaaa;">⚠️ WannaCry Sim is active: files are shown as locked until removed.</div>' : ''}
             <div class="storage-bar">
                 <div class="storage-fill" id="storageFill"></div>
             </div>
@@ -2478,6 +2568,19 @@
                 <div class="list-item-sub">Save a JSON file of your GSO Phone state.</div>
             </div>
             <button class="btn btn-secondary" id="btnExportState" style="margin-top:6px;">Download JSON</button>
+
+            <div class="app-section-title" style="margin-top:10px;">Local files (simulated)</div>
+            <div class="list-item" style="border-color:rgba(255,80,80,0.45); background:rgba(120,10,10,0.2);">
+                <div class="list-item-title">🦠 FakeVirushtml.txt</div>
+                <div class="list-item-sub">Harmless HTML/CSS/JS demo file with fake-virus style UI</div>
+            </div>
+            <button class="btn btn-secondary" id="btnOpenVirusFile" style="margin-top:6px;">Open FakeVirushtml.txt</button>
+            <button class="btn btn-secondary" id="btnDownloadVirusFile" style="margin-top:6px;">Download FakeVirushtml.txt</button>
+            <div id="virusFilePanel" style="display:none; margin-top:8px; padding:10px; border-radius:10px; border:1px dashed rgba(255,80,80,0.55); background:rgba(60,0,0,0.35); color:#ffb3b3;">
+                <div style="font-weight:700; text-align:center; animation: virusBlink 0.6s infinite;">SIMULATED THREAT FILE DETECTED</div>
+                <div style="font-size:11px; margin-top:6px; opacity:0.95;">Loaded from FakeVirushtml.txt. This is only HTML, CSS, and JavaScript for UI testing.</div>
+                <pre id="virusFilePreview" style="margin-top:8px; white-space:pre-wrap; font-size:10px; max-height:120px; overflow:auto; background:rgba(0,0,0,0.35); border-radius:8px; padding:8px;"></pre>
+            </div>
         `;
         const storageFill = document.getElementById('storageFill');
         const storageUsedLabel = document.getElementById('storageUsedLabel');
@@ -2486,6 +2589,52 @@
         storageUsedLabel.textContent = usedGB + ' GB';
 
         const btnExport = document.getElementById('btnExportState');
+        const btnOpenVirusFile = document.getElementById('btnOpenVirusFile');
+        const btnDownloadVirusFile = document.getElementById('btnDownloadVirusFile');
+        const virusFilePanel = document.getElementById('virusFilePanel');
+        const virusFilePreview = document.getElementById('virusFilePreview');
+        const fakeVirusHtmlFile = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fake Virus Alert (Simulation)</title>
+<style>
+  body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #130404;
+    color: #ffd2d2;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+  }
+  .panel {
+    width: min(460px, 92vw);
+    border: 1px dashed rgba(255, 80, 80, 0.65);
+    border-radius: 12px;
+    padding: 14px;
+    background: rgba(150, 20, 20, 0.18);
+  }
+  .title {
+    text-align: center;
+    font-weight: 800;
+    letter-spacing: .04em;
+    animation: blink .6s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: .55; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <div class="title">SIMULATED VIRUS FILE</div>
+    <p>This is a harmless UI demo file for GSO Phone.</p>
+    <button onclick="alert('No real malware. Demo only ✅')">Run fake scan</button>
+  </div>
+</body>
+</html>`;
         btnExport.onclick = () => {
             const data = JSON.stringify(state, null, 2);
             const blob = new Blob([data], { type: 'application/json' });
@@ -2498,6 +2647,27 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
             logEvent('State exported as JSON');
+        };
+
+        btnOpenVirusFile.onclick = () => {
+            virusFilePanel.style.display = 'block';
+            virusFilePreview.textContent = fakeVirusHtmlFile;
+            showToast('FakeVirushtml.txt opened (simulated)');
+            logEvent('Files: FakeVirushtml.txt opened (simulated)');
+        };
+
+        btnDownloadVirusFile.onclick = () => {
+            const blob = new Blob([fakeVirusHtmlFile], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'FakeVirushtml.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('FakeVirushtml.txt downloaded');
+            logEvent('Files: FakeVirushtml.txt downloaded');
         };
     }
 
@@ -2667,16 +2837,118 @@
     function renderGamesHubApp() {
         appBody.innerHTML = `
             <div class="app-section-title">GSO Games Hub</div>
-            <div class="list-item">
-                <div class="list-item-title">GSO Runner</div>
-                <div class="list-item-sub">Endless running in a world that doesn’t exist.</div>
+            <div class="list-item" style="margin-bottom:8px;">
+                <div class="list-item-title">⚡ Tap Sprint</div>
+                <div class="list-item-sub">Tap as fast as you can for 5 seconds.</div>
             </div>
-            <div class="list-item">
-                <div class="list-item-title">Puzzle Grid</div>
-                <div class="list-item-sub">Solve puzzles that never truly happened.</div>
+            <button class="btn btn-secondary" id="btnStartTapGame">Start Tap Sprint</button>
+            <div class="sleep-hint" id="tapGameStatus" style="margin-top:6px;">Best score: ${state.gameTapBest}</div>
+
+            <div class="list-item" style="margin-top:10px; margin-bottom:8px;">
+                <div class="list-item-title">🔢 Number Guess</div>
+                <div class="list-item-sub">Guess a number from 1 to 20.</div>
             </div>
-            <div class="sleep-hint">Games are not playable, but your curiosity is.</div>
+            <input id="guessInput" type="number" min="1" max="20" placeholder="1-20" style="width:100%; padding:8px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.06); color:#fff;" />
+            <button class="btn btn-secondary" id="btnGuessNumber" style="margin-top:6px;">Submit guess</button>
+            <button class="btn btn-secondary" id="btnNewGuessRound" style="margin-top:6px;">New round</button>
+            <div class="sleep-hint" id="guessGameStatus" style="margin-top:6px;">Best attempts: ${state.gameGuessBest ?? 'N/A'}</div>
+
+            <div class="list-item" style="margin-top:10px;">
+                <div class="list-item-title">🧩 Quick Match</div>
+                <div class="list-item-sub" id="matchPrompt">Find the matching emoji in 3 choices.</div>
+            </div>
+            <div id="matchChoices" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; margin-top:6px;"></div>
+            <div class="sleep-hint" id="matchStatus" style="margin-top:6px;">Tap any tile to play.</div>
         `;
+
+        const btnStartTapGame = document.getElementById('btnStartTapGame');
+        const tapGameStatus = document.getElementById('tapGameStatus');
+        let tapScore = 0;
+        let tapTimer = null;
+        btnStartTapGame.onclick = () => {
+            if (btnStartTapGame.dataset.running === '1') {
+                tapScore += 1;
+                tapGameStatus.textContent = `Score: ${tapScore}`;
+                return;
+            }
+            tapScore = 0;
+            btnStartTapGame.dataset.running = '1';
+            btnStartTapGame.textContent = 'Tap now!';
+            tapGameStatus.textContent = 'Score: 0';
+            tapTimer = setTimeout(() => {
+                btnStartTapGame.dataset.running = '0';
+                btnStartTapGame.textContent = 'Start Tap Sprint';
+                if (tapScore > state.gameTapBest) state.gameTapBest = tapScore;
+                tapGameStatus.textContent = `Round done: ${tapScore} taps • Best: ${state.gameTapBest}`;
+                saveState();
+                logEvent('Games Hub: Tap Sprint score ' + tapScore);
+            }, 5000);
+        };
+
+        const guessInput = document.getElementById('guessInput');
+        const btnGuessNumber = document.getElementById('btnGuessNumber');
+        const btnNewGuessRound = document.getElementById('btnNewGuessRound');
+        const guessGameStatus = document.getElementById('guessGameStatus');
+        let guessTarget = 1 + Math.floor(Math.random() * 20);
+        let guessAttempts = 0;
+
+        btnGuessNumber.onclick = () => {
+            const value = Number(guessInput.value);
+            if (!Number.isInteger(value) || value < 1 || value > 20) {
+                guessGameStatus.textContent = 'Enter a whole number between 1 and 20.';
+                return;
+            }
+            guessAttempts += 1;
+            if (value === guessTarget) {
+                if (state.gameGuessBest === null || guessAttempts < state.gameGuessBest) state.gameGuessBest = guessAttempts;
+                guessGameStatus.textContent = `Correct in ${guessAttempts} attempts! Best: ${state.gameGuessBest}`;
+                saveState();
+                logEvent('Games Hub: Number Guess solved in ' + guessAttempts + ' attempts');
+            } else if (value < guessTarget) {
+                guessGameStatus.textContent = `Too low. Attempts: ${guessAttempts}`;
+            } else {
+                guessGameStatus.textContent = `Too high. Attempts: ${guessAttempts}`;
+            }
+        };
+
+        btnNewGuessRound.onclick = () => {
+            guessTarget = 1 + Math.floor(Math.random() * 20);
+            guessAttempts = 0;
+            guessInput.value = '';
+            guessGameStatus.textContent = `New round started. Best attempts: ${state.gameGuessBest ?? 'N/A'}`;
+        };
+
+        const matchChoices = document.getElementById('matchChoices');
+        const matchPrompt = document.getElementById('matchPrompt');
+        const matchStatus = document.getElementById('matchStatus');
+        const emojiPool = ['🍎','🚀','🎮','🐱','⚽','🎵','🧠','🌙'];
+
+        function startMatchRound() {
+            const target = emojiPool[Math.floor(Math.random() * emojiPool.length)];
+            const options = [target, emojiPool[Math.floor(Math.random() * emojiPool.length)], emojiPool[Math.floor(Math.random() * emojiPool.length)]];
+            options.sort(() => Math.random() - 0.5);
+            matchPrompt.textContent = `Find this emoji: ${target}`;
+            matchChoices.innerHTML = '';
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-secondary';
+                btn.style.padding = '10px 0';
+                btn.textContent = opt;
+                btn.onclick = () => {
+                    if (opt === target) {
+                        matchStatus.textContent = 'Correct! New round loaded.';
+                        logEvent('Games Hub: Quick Match win');
+                    } else {
+                        matchStatus.textContent = 'Not that one. Try the next round.';
+                        logEvent('Games Hub: Quick Match miss');
+                    }
+                    startMatchRound();
+                };
+                matchChoices.appendChild(btn);
+            });
+        }
+
+        startMatchRound();
     }
 
     function renderSocialPlusApp() {
@@ -2706,6 +2978,7 @@
                 <div class="list-item-sub">Volatility: 100% fake</div>
             </div>
             <div class="sleep-hint">Prices are random and not connected to any real market.</div>
+            <div class="sleep-hint" style="margin-top:4px;">Wallet: ${state.gsoCoins} GS Coin (simulated)</div>
         `;
     }
 
@@ -2730,8 +3003,179 @@
                 <div class="list-item-title">welcome@gso.phone</div>
                 <div class="list-item-sub">"Thanks for trying the GSO Phone simulator."</div>
             </div>
+            <div class="list-item" style="border-color: rgba(255,80,80,0.45); background: rgba(120,10,10,0.2); margin-top:8px;">
+                <div class="list-item-title">security-center@gs0-alerts.biz</div>
+                <div class="list-item-sub">⚠️ Scam email: "URGENT! Open FakeVirushtml.txt attachment now!"</div>
+            </div>
+            <button class="btn btn-secondary" id="btnOpenScamAttachment" style="margin-top:6px;">Open attachment (simulated scam)</button>
+            <button class="btn btn-secondary" id="btnTriggerRansomware" style="margin-top:6px;">Open "invoice.zip" (ransomware demo)</button>
             <div class="sleep-hint">No emails are sent or received. This is all UI.</div>
         `;
+
+        const btnOpenScamAttachment = document.getElementById('btnOpenScamAttachment');
+        const btnTriggerRansomware = document.getElementById('btnTriggerRansomware');
+        btnOpenScamAttachment.onclick = () => {
+            showToast('Scam attachment opened (simulation)');
+            logEvent('GSO Mail: simulated scam attachment opened');
+            openApp('virusPrank');
+        };
+
+        btnTriggerRansomware.onclick = () => {
+            state.ransomwareActive = true;
+            saveState();
+            showToast('Ransomware simulation started');
+            logEvent('GSO Mail: ransomware simulation triggered');
+            openApp('wannaCrySim');
+        };
+    }
+
+
+    function renderReplicaLabApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Replica Lab</div>
+            <div class="list-item">
+                <div class="list-item-title">Create profile replica (fake)</div>
+                <div class="list-item-sub">Generates harmless mock identities for UI demos only.</div>
+            </div>
+            <button class="btn btn-secondary" id="btnGenerateReplica">Generate replica</button>
+            <div id="replicaOutput" class="sleep-hint" style="margin-top:8px; white-space:pre-wrap;"></div>
+        `;
+        const btnGenerateReplica = document.getElementById('btnGenerateReplica');
+        const replicaOutput = document.getElementById('replicaOutput');
+        const names = ['Alex Mercer', 'Jordan Vega', 'Sam Carter', 'Riley Park', 'Taylor Quinn'];
+        const cities = ['GSO-City', 'North Byte', 'Sim Harbor', 'Cloudview', 'Pixel Point'];
+        btnGenerateReplica.onclick = () => {
+            const name = names[Math.floor(Math.random() * names.length)];
+            const city = cities[Math.floor(Math.random() * cities.length)];
+            const id = Math.floor(100000 + Math.random() * 900000);
+            replicaOutput.textContent = `Name: ${name}
+City: ${city}
+Demo ID: REP-${id}
+
+This is a harmless generated profile for testing only.`;
+            logEvent('Replica Lab: fake profile generated');
+        };
+    }
+
+
+    function renderGsDefenceApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">GS Defence Antivirus</div>
+            <div class="list-item">
+                <div class="list-item-title">Engine: GS-Defender v1.0</div>
+                <div class="list-item-sub">Safe simulation only. No real malware actions.</div>
+            </div>
+            <div class="list-item" style="margin-top:8px; border-color: rgba(255,80,80,0.45); background: rgba(120,10,10,0.18);">
+                <div class="list-item-title">Ransomware status</div>
+                <div class="list-item-sub" id="defenceStatus">${state.ransomwareActive ? 'Threat detected: WannaCry Sim' : 'No active ransomware simulation found.'}</div>
+            </div>
+            <button class="btn btn-secondary" id="btnRunDefenceScan" style="margin-top:8px; width:100%;">Run full scan</button>
+            <div class="sleep-hint" id="defenceHint" style="margin-top:6px;">Tip: You can also remove ransomware by paying GS Coin inside WannaCry Sim.</div>
+        `;
+        const btnRunDefenceScan = document.getElementById('btnRunDefenceScan');
+        const defenceStatus = document.getElementById('defenceStatus');
+        const defenceHint = document.getElementById('defenceHint');
+
+        btnRunDefenceScan.onclick = () => {
+            btnRunDefenceScan.disabled = true;
+            btnRunDefenceScan.textContent = 'Scanning...';
+            setTimeout(() => {
+                if (state.ransomwareActive) {
+                    clearRansomware('GS Defence scan');
+                    defenceStatus.textContent = 'Threat neutralized: WannaCry Sim removed.';
+                    defenceHint.textContent = 'System restored. Your files are unlocked (simulated).';
+                } else {
+                    showToast('No threats found');
+                    logEvent('GS Defence scan: no threats');
+                    defenceHint.textContent = 'No active ransomware simulation detected.';
+                }
+                btnRunDefenceScan.disabled = false;
+                btnRunDefenceScan.textContent = 'Run full scan';
+            }, 900);
+        };
+    }
+
+    function renderWannaCrySimApp() {
+        if (!state.ransomwareActive) {
+            appBody.innerHTML = `
+                <div class="app-section-title">WannaCry Sim</div>
+                <div class="list-item">
+                    <div class="list-item-title">No active ransomware simulation</div>
+                    <div class="list-item-sub">Files are currently unlocked.</div>
+                </div>
+                <button class="btn btn-secondary" id="btnActivateRansom" style="margin-top:8px; width:100%;">Start ransomware simulation</button>
+                <div class="sleep-hint">This is a harmless training UI.</div>
+            `;
+            document.getElementById('btnActivateRansom').onclick = () => {
+                state.ransomwareActive = true;
+                saveState();
+                logEvent('WannaCry Sim activated');
+                renderWannaCrySimApp();
+            };
+            return;
+        }
+
+        const ransomPrice = 250;
+        appBody.innerHTML = `
+            <div class="app-section-title">WannaCry Sim (Training)</div>
+            <div style="margin: 10px 0 12px; padding: 10px; border-radius: 10px; border: 1px dashed rgba(255,80,80,0.55); color: #ffaaaa; background: rgba(60,0,0,0.35); text-align:center; font-weight:600; letter-spacing:0.04em; animation: virusBlink 0.6s infinite;">FILES ENCRYPTED (SIMULATED)</div>
+            <div class="list-item">
+                <div class="list-item-title">Your demo files are locked</div>
+                <div class="list-item-sub">Two recovery options are available below.</div>
+            </div>
+            <button class="btn btn-secondary" id="btnUseAvRecovery" style="margin-top:8px; width:100%;">Use GS Defence (recommended)</button>
+            <button class="btn btn-secondary" id="btnPayRansom" style="margin-top:6px; width:100%;">Pay ${ransomPrice} GS Coin</button>
+            <div class="sleep-hint" id="ransomHint" style="margin-top:8px;">Wallet: ${state.gsoCoins} GS Coin</div>
+        `;
+
+        document.getElementById('btnUseAvRecovery').onclick = () => {
+            showToast('Opening GS Defence...');
+            logEvent('WannaCry Sim: user chose GS Defence recovery');
+            openApp('gsDefence');
+        };
+
+        document.getElementById('btnPayRansom').onclick = () => {
+            if (state.gsoCoins < ransomPrice) {
+                showToast('Not enough GS Coin');
+                logEvent('WannaCry Sim: ransom payment failed (insufficient coin)');
+                return;
+            }
+            state.gsoCoins -= ransomPrice;
+            clearRansomware('GS Coin payment');
+            showToast('Paid ' + ransomPrice + ' GS Coin (simulated)');
+            renderWannaCrySimApp();
+        };
+    }
+
+    function renderVirusPrankApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Fake Virus Simulator</div>
+            <div class="list-item" style="border-color: rgba(255,70,70,0.5); background: rgba(180,20,20,0.25);">
+                <div class="list-item-title">⚠️ Fake system warning</div>
+                <div class="list-item-sub">No real malware exists here. This screen is only a prank animation.</div>
+            </div>
+            <div style="margin: 10px 0 12px; padding: 10px; border-radius: 10px; border: 1px dashed rgba(255,80,80,0.55); color: #ffaaaa; background: rgba(60,0,0,0.35); text-align:center; font-weight:600; letter-spacing:0.04em; animation: virusBlink 0.6s infinite;">SIMULATED VIRUS DETECTED</div>
+            <button class="btn btn-secondary" id="btnRunScan" style="width:100%;">Run fake antivirus scan</button>
+            <div class="sleep-hint" id="virusHint">Tap scan to remove the pretend virus.</div>
+        `;
+        const btnRunScan = document.getElementById('btnRunScan');
+        const virusHint = document.getElementById('virusHint');
+        btnRunScan.onclick = () => {
+            btnRunScan.disabled = true;
+            btnRunScan.textContent = 'Scanning...';
+            let progress = 0;
+            const timer = setInterval(() => {
+                progress += 20;
+                btnRunScan.textContent = `Scanning... ${progress}%`;
+                if (progress >= 100) {
+                    clearInterval(timer);
+                    btnRunScan.textContent = 'Threat removed (fake)';
+                    virusHint.textContent = 'All good. The prank virus has been neutralized.';
+                    showToast('Fake virus removed ✅');
+                    logEvent('Virus Prank app: simulated scan complete');
+                }
+            }, 260);
+        };
     }
 
     function renderSysLogsApp() {
@@ -3111,6 +3555,35 @@
         });
     }
 
+    function initHomeSwipe() {
+        appGrid.addEventListener('touchstart', e => {
+            if (!homeScreen.classList.contains('active')) return;
+            homeSwipeStartX = e.changedTouches[0].clientX;
+        }, { passive: true });
+
+        appGrid.addEventListener('touchend', e => {
+            if (!homeScreen.classList.contains('active') || homeSwipeStartX === null) return;
+            const endX = e.changedTouches[0].clientX;
+            const dx = endX - homeSwipeStartX;
+            homeSwipeStartX = null;
+            const threshold = 45;
+            const totalIcons = [...apps].filter(a => !a.devOnly || state.devMode).length + storeApps.filter(a => state.storeInstalled[a.id]).length;
+            const totalPages = Math.max(1, Math.ceil(totalIcons / APPS_PER_PAGE));
+
+            if (dx < -threshold && state.homePage < totalPages - 1) {
+                state.homePage += 1;
+                saveState();
+                renderApps();
+                showToast(`Page ${state.homePage + 1}/${totalPages}`);
+            } else if (dx > threshold && state.homePage > 0) {
+                state.homePage -= 1;
+                saveState();
+                renderApps();
+                showToast(`Page ${state.homePage + 1}/${totalPages}`);
+            }
+        }, { passive: true });
+    }
+
     function init() {
         loadState();
         ensureAppOrder();
@@ -3126,6 +3599,7 @@
         initButtons();
         initPinPad();
         initAppLaunch();
+        initHomeSwipe();
         initRealWeather();
         initDevLoop();
         initDevTouches();
