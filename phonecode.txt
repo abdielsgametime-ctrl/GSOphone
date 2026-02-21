@@ -28,6 +28,32 @@
         color: #fff;
     }
 
+
+
+    body.one-ui .phone-screen {
+        background: linear-gradient(180deg, #eef3ff 0%, #dbe6ff 52%, #d2dcfb 100%);
+        color: #111;
+    }
+
+    body.one-ui .widget,
+    body.one-ui .dock,
+    body.one-ui .list-item,
+    body.one-ui .store-card,
+    body.one-ui .app-header,
+    body.one-ui .app-screen {
+        background: rgba(255,255,255,0.78);
+        color: #111;
+        border-color: rgba(17,17,17,0.12);
+    }
+
+    body.one-ui .app-body,
+    body.one-ui .sleep-hint,
+    body.one-ui .store-card-sub,
+    body.one-ui .list-item-sub {
+        color: #222;
+        opacity: 0.85;
+    }
+
     @keyframes virusBlink {
         0%, 100% { opacity: 0.55; }
         50% { opacity: 1; }
@@ -1624,7 +1650,8 @@
         gameTapBest: 0,
         gameGuessBest: null,
         gsoCoins: 500,
-        ransomwareActive: false
+        ransomwareActive: false,
+        oneUiMode: false
     };
 
     const apps = [
@@ -1659,6 +1686,9 @@
         { id: 'gsoMail', name: 'Gmail', desc: 'Email management with a Gmail-like simulated UI.' },
         { id: 'googleDrive', name: 'Google Drive', desc: 'Cloud storage and file sync simulation.' },
         { id: 'samsungHealth', name: 'Samsung Health', desc: 'Health and activity tracking simulation.' },
+        { id: 'samsungInternet', name: 'Samsung Internet', desc: 'Samsung web browser style simulation.' },
+        { id: 'samsungNotes', name: 'Samsung Notes', desc: 'Create and organize notes Samsung-style.' },
+        { id: 'galaxyThemes', name: 'Galaxy Themes', desc: 'Personalize One UI colors and icons (simulated).' },
         { id: 'oneUiHome', name: 'One UI Home', desc: 'Samsung-style launcher customization demo.' },
         { id: 'miuiGallery', name: 'MIUI Gallery', desc: 'Xiaomi-inspired gallery management simulation.' },
         { id: 'replicaLab', name: 'Replica Lab', desc: 'Build harmless fake-clone profiles for UI demos.' }
@@ -1711,7 +1741,8 @@
             gameTapBest: state.gameTapBest,
             gameGuessBest: state.gameGuessBest,
             gsoCoins: state.gsoCoins,
-            ransomwareActive: state.ransomwareActive
+            ransomwareActive: state.ransomwareActive,
+            oneUiMode: state.oneUiMode
         };
         try {
             localStorage.setItem(LS_KEY, JSON.stringify(toSave));
@@ -2273,6 +2304,15 @@
                 break;
             case 'samsungHealth':
                 renderSamsungHealthApp();
+                break;
+            case 'samsungInternet':
+                renderSamsungInternetApp();
+                break;
+            case 'samsungNotes':
+                renderSamsungNotesApp();
+                break;
+            case 'galaxyThemes':
+                renderGalaxyThemesApp();
                 break;
             case 'oneUiHome':
                 renderOneUiHomeApp();
@@ -3126,15 +3166,78 @@
         `;
     }
 
+
+    function renderSamsungInternetApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Samsung Internet</div>
+            <div class="list-item"><div class="list-item-title">Privacy dashboard</div><div class="list-item-sub">Trackers blocked: ${5 + Math.floor(Math.random() * 20)}</div></div>
+            <div class="list-item"><div class="list-item-title">Quick access</div><div class="list-item-sub">Samsung.com, News, Weather</div></div>
+            <div class="sleep-hint">Browser experience is simulated.</div>
+        `;
+    }
+
+    function renderSamsungNotesApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Samsung Notes</div>
+            <textarea id="samsungNoteArea" style="width:100%;height:130px;border-radius:12px;border:1px solid rgba(0,0,0,0.15);padding:8px;font-size:12px;background:rgba(255,255,255,0.72);color:#111;resize:none;" placeholder="Write a note..."></textarea>
+            <button class="btn btn-secondary" id="btnSaveSamsungNote" style="margin-top:8px;">Save note (simulated)</button>
+            <div class="sleep-hint">Saved locally in this simulator state.</div>
+        `;
+        const area = document.getElementById('samsungNoteArea');
+        area.value = state.notesText || '';
+        document.getElementById('btnSaveSamsungNote').onclick = () => {
+            state.notesText = area.value;
+            saveState();
+            showToast('Samsung note saved');
+            logEvent('Samsung Notes: note saved');
+        };
+    }
+
+    function renderGalaxyThemesApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Galaxy Themes</div>
+            <div class="list-item"><div class="list-item-title">One UI Light</div><div class="list-item-sub">Samsung-inspired bright UI theme</div></div>
+            <button class="btn btn-secondary" id="btnApplyOneUiTheme" style="margin-top:8px; width:100%;">Apply One UI theme</button>
+            <button class="btn btn-secondary" id="btnRestoreGsTheme" style="margin-top:6px; width:100%;">Restore GS theme</button>
+            <div class="sleep-hint">Theme changes are simulated and reversible.</div>
+        `;
+        document.getElementById('btnApplyOneUiTheme').onclick = () => {
+            state.oneUiMode = true;
+            applyOneUiMode();
+            saveState();
+            showToast('One UI theme applied');
+        };
+        document.getElementById('btnRestoreGsTheme').onclick = () => {
+            state.oneUiMode = false;
+            applyOneUiMode();
+            saveState();
+            showToast('GS OS theme restored');
+        };
+    }
+
     function renderOneUiHomeApp() {
         appBody.innerHTML = `
             <div class="app-section-title">One UI Home</div>
-            <div class="list-item"><div class="list-item-title">Home screen grid</div><div class="list-item-sub">4x6 • Android-style layout</div></div>
-            <div class="list-item"><div class="list-item-title">Icon labels</div><div class="list-item-sub">Enabled</div></div>
-            <button class="btn btn-secondary" id="btnOneUiTips" style="margin-top:8px;">Show launcher tips</button>
+            <div class="list-item"><div class="list-item-title">Launcher state</div><div class="list-item-sub">${state.oneUiMode ? 'One UI override active' : 'GS OS active'}</div></div>
+            <div class="list-item"><div class="list-item-title">Samsung suite</div><div class="list-item-sub">Install Samsung Health, Internet, Notes, Galaxy Themes</div></div>
+            <button class="btn btn-secondary" id="btnInstallSamsungSuite" style="margin-top:8px; width:100%;">Install Samsung suite + override GS OS</button>
+            <button class="btn btn-secondary" id="btnDisableOneUi" style="margin-top:6px; width:100%;">Disable One UI override</button>
         `;
-        document.getElementById('btnOneUiTips').onclick = () => {
-            showToast('Tip: long-press icons to reorder');
+        document.getElementById('btnInstallSamsungSuite').onclick = () => {
+            ['samsungHealth', 'samsungInternet', 'samsungNotes', 'galaxyThemes', 'oneUiHome'].forEach(id => state.storeInstalled[id] = true);
+            state.oneUiMode = true;
+            applyOneUiMode();
+            renderApps();
+            saveState();
+            showToast('Samsung apps installed + One UI override enabled');
+            logEvent('One UI Home: Samsung suite installed and GS OS overridden (simulated)');
+        };
+        document.getElementById('btnDisableOneUi').onclick = () => {
+            state.oneUiMode = false;
+            applyOneUiMode();
+            saveState();
+            showToast('One UI override disabled');
+            logEvent('One UI Home: override disabled');
         };
     }
 
@@ -3453,6 +3556,18 @@ This is a harmless generated profile for testing only.`;
         }
     }
 
+    function applyOneUiMode() {
+        document.body.classList.toggle('one-ui', !!state.oneUiMode);
+        const shadeTitle = document.querySelector('.shade-title');
+        if (shadeTitle) shadeTitle.textContent = state.oneUiMode ? 'One UI Quick Panel' : 'GSO Quick Panel';
+        const powerTitle = document.querySelector('.power-menu-title');
+        if (powerTitle) powerTitle.textContent = state.oneUiMode ? 'One UI Power Menu' : 'GSO Power Menu';
+        const lockFooter = document.querySelector('.lock-footer');
+        if (lockFooter) lockFooter.innerHTML = state.oneUiMode
+            ? 'Samsung One UI simulation mode is active.<br>Everything remains safe and simulated.'
+            : 'Real time. Real network status. Fake phone.<br>GSO Phone runs entirely in your browser.';
+    }
+
     function initDropdownShade() {
         statusBar.addEventListener('click', () => {
             dropdownShade.classList.add('visible');
@@ -3721,6 +3836,7 @@ This is a harmless generated profile for testing only.`;
         initDevLoop();
         initDevTouches();
         applyDevOptions();
+        applyOneUiMode();
 
         shadeSubtitle.textContent = `Balanced • Network: ${navigator.onLine ? 'Online' : 'Offline'}`;
         widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: ${navigator.onLine ? 'Online' : 'Offline'}`;
