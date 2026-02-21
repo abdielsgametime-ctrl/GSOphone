@@ -1,0 +1,3160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GSO Phone Simulator – Dev Edition</title>
+<style>
+    :root {
+        --anim-speed: 0.25s;
+    }
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+        background: radial-gradient(circle at top, #333 0, #000 60%);
+        height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+    }
+
+    .phone-frame {
+        position: relative;
+        width: 380px;
+        height: 720px;
+        border-radius: 40px;
+        background: #111;
+        box-shadow: 0 0 0 8px #000, 0 20px 60px rgba(0,0,0,0.8);
+        overflow: hidden;
+        border: 2px solid #333;
+    }
+
+    .phone-screen {
+        position: absolute;
+        inset: 16px;
+        border-radius: 28px;
+        overflow: hidden;
+        background: radial-gradient(circle at top, #2b4b7a, #050814 60%, #000);
+        display: flex;
+        flex-direction: column;
+        transition: filter var(--anim-speed) ease, transform var(--anim-speed) ease, box-shadow var(--anim-speed) ease;
+        transform-origin: center;
+    }
+
+    .phone-screen.awake {
+        transform: scale(1);
+    }
+
+    .phone-screen.sleeping {
+        transform: scale(0.98);
+        filter: brightness(0.4);
+    }
+
+    .phone-screen.dev-slow {
+        transition-duration: 0.6s;
+    }
+
+    .phone-screen.dev-flash {
+        box-shadow: 0 0 0 2px rgba(0,255,0,0.7);
+    }
+
+    .side-button {
+        position: absolute;
+        width: 4px;
+        height: 60px;
+        background: #333;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: transform 0.15s ease, background 0.15s ease;
+    }
+
+    .side-button:active {
+        transform: scale(0.95);
+        background: #555;
+    }
+
+    .side-button.power {
+        right: -4px;
+        top: 140px;
+        height: 70px;
+    }
+
+    .side-button.vol-up {
+        left: -4px;
+        top: 140px;
+    }
+
+    .side-button.vol-down {
+        left: -4px;
+        top: 210px;
+    }
+
+    .status-bar {
+        height: 32px;
+        padding: 4px 10px 0 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: #eee;
+        font-size: 11px;
+        background: linear-gradient(to bottom, rgba(0,0,0,0.6), transparent);
+        z-index: 10;
+        position: relative;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .status-bar:hover {
+        background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    }
+
+    .status-left, .status-right {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-center {
+        font-weight: 600;
+        letter-spacing: 0.04em;
+    }
+
+    .icon-signal, .icon-wifi, .icon-battery {
+        width: 14px;
+        height: 8px;
+        border-radius: 2px;
+        border: 1px solid #ccc;
+        position: relative;
+    }
+
+    .icon-battery::after {
+        content: "";
+        position: absolute;
+        right: -3px;
+        top: 2px;
+        width: 2px;
+        height: 4px;
+        background: #ccc;
+        border-radius: 1px;
+    }
+
+    .battery-level {
+        position: absolute;
+        inset: 1px;
+        background: #4caf50;
+        border-radius: 1px;
+        transition: width var(--anim-speed) ease;
+    }
+
+    .wifi-dot, .signal-bar {
+        position: absolute;
+        bottom: 1px;
+        left: 2px;
+        right: 2px;
+        top: 1px;
+        border-radius: 1px;
+        background: linear-gradient(to right, #ccc 0, #ccc 60%, transparent 60%);
+        opacity: 0.8;
+    }
+
+    .dropdown-shade {
+        position: absolute;
+        top: -260px;
+        left: 0;
+        right: 0;
+        height: 260px;
+        background: rgba(10,10,20,0.96);
+        backdrop-filter: blur(18px);
+        border-bottom-left-radius: 24px;
+        border-bottom-right-radius: 24px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+        padding: 12px 14px 16px;
+        transition: top var(--anim-speed) ease-out, opacity var(--anim-speed) ease-out;
+        z-index: 15;
+        font-size: 12px;
+        opacity: 0;
+    }
+
+    .dropdown-shade.visible {
+        top: 0;
+        opacity: 1;
+    }
+
+    .shade-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .shade-title {
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .shade-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+
+    .shade-tile {
+        background: rgba(255,255,255,0.04);
+        border-radius: 10px;
+        padding: 6px 4px;
+        text-align: center;
+        cursor: pointer;
+        border: 1px solid transparent;
+        user-select: none;
+        transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+    }
+
+    .shade-tile:active {
+        transform: scale(0.96);
+    }
+
+    .shade-tile.active {
+        background: rgba(76,175,80,0.18);
+        border-color: rgba(76,175,80,0.7);
+    }
+
+    .shade-tile-label {
+        font-size: 10px;
+        margin-top: 4px;
+        opacity: 0.9;
+    }
+
+    .shade-slider-row {
+        margin-top: 4px;
+    }
+
+    .shade-slider-label {
+        font-size: 11px;
+        margin-bottom: 2px;
+        opacity: 0.9;
+    }
+
+    .shade-slider {
+        width: 100%;
+    }
+
+    .content {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .lock-screen, .home-screen, .app-screen, .boot-screen, .shutdown-screen, .sleep-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: opacity var(--anim-speed) ease, transform var(--anim-speed) ease;
+    }
+
+    .lock-screen.active,
+    .home-screen.active,
+    .app-screen.active,
+    .boot-screen.active,
+    .shutdown-screen.active,
+    .sleep-overlay.active {
+        display: flex;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .lock-screen {
+        background: radial-gradient(circle at top, #1b3b6a, #02030a 60%, #000);
+        color: #fff;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        padding: 40px 20px 60px;
+    }
+
+    .lock-time {
+        font-size: 52px;
+        font-weight: 300;
+        transition: opacity var(--anim-speed) ease, transform var(--anim-speed) ease;
+    }
+
+    .lock-date {
+        font-size: 14px;
+        opacity: 0.8;
+        margin-top: 4px;
+    }
+
+    .lock-notifications {
+        width: 100%;
+        max-height: 220px;
+        overflow-y: auto;
+        margin-top: 20px;
+    }
+
+    .notif-card {
+        background: rgba(0,0,0,0.45);
+        border-radius: 14px;
+        padding: 8px 10px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        animation: fadeInUp var(--anim-speed) ease;
+    }
+
+    .notif-title {
+        font-weight: 600;
+        margin-bottom: 2px;
+    }
+
+    .notif-body {
+        opacity: 0.9;
+    }
+
+    .lock-footer {
+        text-align: center;
+        font-size: 12px;
+        opacity: 0.8;
+    }
+
+    .lock-pin {
+        margin-top: 16px;
+        text-align: center;
+    }
+
+    .pin-dots {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .pin-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        border: 1px solid rgba(255,255,255,0.7);
+        transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .pin-dot.filled {
+        background: #fff;
+        transform: scale(1.1);
+    }
+
+    .pin-pad {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .pin-key {
+        padding: 8px 0;
+        border-radius: 999px;
+        background: rgba(0,0,0,0.4);
+        border: 1px solid rgba(255,255,255,0.1);
+        cursor: pointer;
+        font-size: 16px;
+        user-select: none;
+        transition: background 0.15s ease, transform 0.12s ease;
+    }
+
+    .pin-key:active {
+        background: rgba(255,255,255,0.1);
+        transform: scale(0.96);
+    }
+
+    .pin-key span {
+        display: block;
+    }
+
+    .home-screen {
+        padding: 40px 16px 16px;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .widget-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .widget {
+        flex: 1;
+        background: rgba(0,0,0,0.45);
+        border-radius: 18px;
+        padding: 10px;
+        font-size: 11px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .widget:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+        background: rgba(0,0,0,0.6);
+    }
+
+    .widget-title {
+        font-size: 11px;
+        opacity: 0.8;
+        margin-bottom: 4px;
+    }
+
+    .widget-main {
+        font-size: 18px;
+        font-weight: 500;
+    }
+
+    .widget-sub {
+        font-size: 11px;
+        opacity: 0.8;
+        margin-top: 2px;
+    }
+
+    .dock {
+        display: flex;
+        justify-content: space-around;
+        padding: 8px 10px;
+        background: rgba(0,0,0,0.5);
+        border-radius: 18px;
+        margin-top: 10px;
+        backdrop-filter: blur(10px);
+        transition: background 0.2s ease;
+    }
+
+    .dock:hover {
+        background: rgba(0,0,0,0.7);
+    }
+
+    .app-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .app-icon {
+        text-align: center;
+        font-size: 11px;
+        cursor: pointer;
+        user-select: none;
+        transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    .app-icon:hover {
+        transform: translateY(-2px);
+    }
+
+    .app-icon[draggable="true"] {
+        cursor: grab;
+    }
+
+    .app-icon.drag-over {
+        outline: 2px dashed rgba(255,255,255,0.6);
+        border-radius: 16px;
+    }
+
+    .app-icon-circle {
+        width: 46px;
+        height: 46px;
+        border-radius: 16px;
+        margin: 0 auto 4px;
+        background: linear-gradient(135deg, #4a90e2, #9013fe);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .app-icon:hover .app-icon-circle {
+        transform: translateY(-1px) scale(1.03);
+        box-shadow: 0 6px 14px rgba(0,0,0,0.6);
+    }
+
+    .app-icon-circle.system {
+        background: linear-gradient(135deg, #4caf50, #2e7d32);
+    }
+
+    .app-icon-circle.store {
+        background: linear-gradient(135deg, #ff9800, #f44336);
+    }
+
+    .app-icon-circle.media {
+        background: linear-gradient(135deg, #e91e63, #9c27b0);
+    }
+
+    .app-icon-circle.tools {
+        background: linear-gradient(135deg, #009688, #00bcd4);
+    }
+
+    .app-screen {
+        background: rgba(4,6,16,0.98);
+        flex-direction: column;
+    }
+
+    .app-header {
+        padding: 8px 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        background: linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.3));
+    }
+
+    .app-back {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+        user-select: none;
+        transition: background 0.15s ease, transform 0.12s ease;
+    }
+
+    .app-back:active {
+        background: rgba(255,255,255,0.1);
+        transform: scale(0.95);
+    }
+
+    .app-title {
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .app-body {
+        flex: 1;
+        padding: 10px;
+        font-size: 12px;
+        overflow-y: auto;
+        animation: fadeInUp var(--anim-speed) ease;
+    }
+
+    .app-section-title {
+        font-size: 12px;
+        font-weight: 600;
+        margin: 6px 0 4px;
+        opacity: 0.9;
+    }
+
+    .settings-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .settings-label {
+        font-size: 12px;
+    }
+
+    .toggle {
+        width: 34px;
+        height: 18px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.2);
+        padding: 2px;
+        cursor: pointer;
+        position: relative;
+        transition: background 0.18s ease;
+    }
+
+    .toggle-knob {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #fff;
+        position: absolute;
+        left: 2px;
+        top: 2px;
+        transition: left 0.18s ease;
+    }
+
+    .toggle.on {
+        background: #4caf50;
+    }
+
+    .toggle.on .toggle-knob {
+        left: 18px;
+    }
+
+    .volume-overlay {
+        position: absolute;
+        right: 16px;
+        top: 80px;
+        width: 26px;
+        padding: 8px 4px;
+        background: rgba(0,0,0,0.7);
+        border-radius: 16px;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        z-index: 30;
+        animation: fadeIn 0.18s ease;
+    }
+
+    .volume-bar {
+        width: 6px;
+        height: 80px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.15);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .volume-fill {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #4caf50;
+        transition: height 0.18s ease;
+    }
+
+    .volume-icon {
+        font-size: 14px;
+    }
+
+    .power-menu {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 40;
+        animation: fadeIn 0.2s ease;
+    }
+
+    .power-menu-card {
+        background: rgba(10,10,20,0.96);
+        border-radius: 20px;
+        padding: 16px 18px;
+        width: 70%;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        transform: translateY(10px);
+        animation: slideUp 0.2s ease forwards;
+    }
+
+    .power-menu-title {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+    .power-menu-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btn {
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: none;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+    }
+
+    .btn-primary {
+        background: #f44336;
+        color: #fff;
+    }
+
+    .btn-secondary {
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+    }
+
+    .btn:active {
+        transform: scale(0.96);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    }
+
+    .boot-screen, .shutdown-screen {
+        background: #000;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 14px;
+    }
+
+    .boot-logo {
+        font-size: 26px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        animation: fadeInDown 0.4s ease;
+    }
+
+    .boot-sub {
+        font-size: 11px;
+        opacity: 0.7;
+    }
+
+    .boot-loader {
+        margin-top: 18px;
+        width: 120px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.15);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .boot-loader-fill {
+        position: absolute;
+        left: -40%;
+        top: 0;
+        bottom: 0;
+        width: 40%;
+        background: #4caf50;
+        animation: bootload 1.2s linear infinite;
+    }
+
+    @keyframes bootload {
+        0% { left: -40%; }
+        100% { left: 100%; }
+    }
+
+    .sleep-overlay {
+        background: #000;
+    }
+
+    .toast {
+        position: absolute;
+        bottom: 70px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.85);
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        display: none;
+        z-index: 50;
+        animation: fadeInUp 0.2s ease;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.1);
+        font-size: 10px;
+        margin-left: 4px;
+    }
+
+    .list-item {
+        padding: 6px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+        font-size: 12px;
+    }
+
+    .list-item-title {
+        font-weight: 500;
+    }
+
+    .list-item-sub {
+        font-size: 11px;
+        opacity: 0.8;
+    }
+
+    .pill {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,0.2);
+        font-size: 10px;
+        margin-top: 2px;
+    }
+
+    .app-store-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .store-card {
+        padding: 8px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.03);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.18s ease, transform 0.18s ease;
+    }
+
+    .store-card:hover {
+        background: rgba(255,255,255,0.06);
+        transform: translateY(-1px);
+    }
+
+    .store-card-main {
+        font-size: 12px;
+    }
+
+    .store-card-title {
+        font-weight: 500;
+    }
+
+    .store-card-sub {
+        font-size: 11px;
+        opacity: 0.8;
+    }
+
+    .store-btn {
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: none;
+        font-size: 11px;
+        cursor: pointer;
+        background: #4caf50;
+        color: #fff;
+        transition: background 0.15s ease, transform 0.12s ease;
+    }
+
+    .store-btn.installed {
+        background: rgba(255,255,255,0.1);
+    }
+
+    .store-btn:active {
+        transform: scale(0.95);
+    }
+
+    .camera-preview {
+        width: 100%;
+        height: 220px;
+        border-radius: 16px;
+        background: radial-gradient(circle at center, #555, #111);
+        margin-bottom: 10px;
+        position: relative;
+        overflow: hidden;
+        animation: subtlePan 6s linear infinite alternate;
+    }
+
+    .camera-overlay-text {
+        position: absolute;
+        bottom: 6px;
+        left: 8px;
+        font-size: 11px;
+        opacity: 0.8;
+    }
+
+    .camera-controls {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 6px;
+    }
+
+    .camera-shutter {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: 3px solid #fff;
+        background: rgba(255,255,255,0.1);
+        cursor: pointer;
+        transition: transform 0.12s ease, box-shadow 0.15s ease;
+    }
+
+    .camera-shutter:active {
+        transform: scale(0.92);
+        box-shadow: 0 0 0 4px rgba(255,255,255,0.2);
+    }
+
+    .camera-mode {
+        font-size: 11px;
+        opacity: 0.8;
+        align-self: center;
+    }
+
+    .gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+        margin-top: 6px;
+    }
+
+    .gallery-item {
+        background: linear-gradient(135deg, #ff9800, #f44336);
+        border-radius: 6px;
+        height: 60px;
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.25s ease;
+    }
+
+    .call-screen {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .call-name {
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+
+    .call-status {
+        font-size: 12px;
+        opacity: 0.8;
+    }
+
+    .call-controls {
+        margin-top: 18px;
+        display: flex;
+        justify-content: center;
+        gap: 18px;
+    }
+
+    .call-btn {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        color: #fff;
+        font-size: 18px;
+        transition: transform 0.12s ease, box-shadow 0.15s ease;
+    }
+
+    .call-btn.accept {
+        background: #4caf50;
+    }
+
+    .call-btn.decline {
+        background: #f44336;
+    }
+
+    .call-btn.fake {
+        background: #607d8b;
+        font-size: 14px;
+    }
+
+    .call-btn:active {
+        transform: scale(0.94);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    }
+
+    .map-box {
+        height: 200px;
+        border-radius: 14px;
+        background: radial-gradient(circle at 20% 20%, #4caf50, #1b5e20 40%, #0d47a1 70%, #000);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 10px;
+        animation: subtlePan 10s linear infinite alternate;
+    }
+
+    .map-marker {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ffeb3b;
+        box-shadow: 0 0 8px #ffeb3b;
+        transition: transform 0.3s ease;
+    }
+
+    .map-label {
+        position: absolute;
+        bottom: 6px;
+        left: 8px;
+        font-size: 11px;
+        background: rgba(0,0,0,0.5);
+        padding: 2px 6px;
+        border-radius: 999px;
+    }
+
+    .storage-bar {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.1);
+        overflow: hidden;
+        margin-top: 4px;
+    }
+
+    .storage-fill {
+        height: 100%;
+        background: linear-gradient(to right, #4caf50, #ff9800, #f44336);
+        width: 30%;
+        transition: width var(--anim-speed) ease;
+    }
+
+    .error-banner {
+        padding: 6px 8px;
+        border-radius: 10px;
+        background: rgba(244,67,54,0.15);
+        border: 1px solid rgba(244,67,54,0.6);
+        font-size: 11px;
+        margin-bottom: 8px;
+    }
+
+    .sleep-hint {
+        font-size: 11px;
+        opacity: 0.7;
+        margin-top: 10px;
+    }
+
+    .mini-chip {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        font-size: 10px;
+        margin-right: 4px;
+        margin-top: 2px;
+    }
+
+    .recents-strip {
+        position: absolute;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        z-index: 12;
+    }
+
+    .recents-pill {
+        width: 40px;
+        height: 4px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.4);
+        cursor: pointer;
+        transition: transform 0.12s ease, background 0.15s ease;
+    }
+
+    .recents-pill:active {
+        transform: scale(0.9);
+        background: rgba(255,255,255,0.7);
+    }
+
+    .shutdown-screen-text {
+        text-align: center;
+        font-size: 13px;
+        opacity: 0.9;
+    }
+
+    .shutdown-hint {
+        margin-top: 10px;
+        font-size: 11px;
+        opacity: 0.7;
+    }
+
+    .browser-input-row {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 6px;
+    }
+
+    .browser-input-row input {
+        flex: 1;
+        padding: 4px 6px;
+        border-radius: 999px;
+        border: none;
+        font-size: 11px;
+        outline: none;
+    }
+
+    .browser-input-row button {
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: none;
+        font-size: 11px;
+        cursor: pointer;
+        background: #4caf50;
+        color: #fff;
+        transition: transform 0.12s ease, background 0.15s ease;
+    }
+
+    .browser-input-row button:active {
+        transform: scale(0.95);
+    }
+
+    .messages-input-row {
+        display: flex;
+        gap: 4px;
+        margin-top: 6px;
+    }
+
+    .messages-input-row input {
+        flex: 1;
+        padding: 4px 6px;
+        border-radius: 999px;
+        border: none;
+        font-size: 11px;
+        outline: none;
+    }
+
+    .messages-input-row button {
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: none;
+        font-size: 11px;
+        cursor: pointer;
+        background: #4caf50;
+        color: #fff;
+        transition: transform 0.12s ease, background 0.15s ease;
+    }
+
+    .messages-input-row button:active {
+        transform: scale(0.95);
+    }
+
+    /* Dev overlays */
+
+    .dev-overlay {
+        position: absolute;
+        top: 34px;
+        left: 6px;
+        right: 6px;
+        display: none;
+        z-index: 25;
+        pointer-events: none;
+        font-size: 10px;
+        color: #0f0;
+        text-shadow: 0 0 4px #000;
+    }
+
+    .dev-overlay.visible {
+        display: block;
+    }
+
+    .dev-overlay-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 4px;
+    }
+
+    .dev-overlay-box {
+        background: rgba(0,0,0,0.7);
+        border-radius: 8px;
+        padding: 4px 6px;
+        margin-bottom: 4px;
+        border: 1px solid rgba(0,255,0,0.4);
+    }
+
+    .dev-touch-indicator {
+        position: absolute;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 2px solid rgba(0,255,0,0.8);
+        pointer-events: none;
+        transform: translate(-50%, -50%);
+        animation: devTouch 0.4s ease-out forwards;
+        z-index: 60;
+    }
+
+    @keyframes devTouch {
+        from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        to { opacity: 0; transform: translate(-50%, -50%) scale(1.6); }
+    }
+
+    .dev-bounds .widget,
+    .dev-bounds .app-grid,
+    .dev-bounds .dock,
+    .dev-bounds .lock-screen,
+    .dev-bounds .app-screen,
+    .dev-bounds .status-bar {
+        outline: 1px dashed rgba(0,255,0,0.6);
+    }
+
+    .dev-log-list {
+        max-height: 260px;
+        overflow-y: auto;
+        font-size: 11px;
+    }
+
+    .dev-log-item {
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .dev-log-time {
+        opacity: 0.7;
+        margin-right: 4px;
+    }
+
+    .dev-log-text {
+        opacity: 0.95;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(6px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(16px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes subtlePan {
+        from { transform: translate3d(-4px, -4px, 0) scale(1.02); }
+        to { transform: translate3d(4px, 4px, 0) scale(1.02); }
+    }
+</style>
+</head>
+<body>
+<div class="phone-frame">
+    <div class="side-button power" id="btnPower"></div>
+    <div class="side-button vol-up" id="btnVolUp"></div>
+    <div class="side-button vol-down" id="btnVolDown"></div>
+
+    <div class="phone-screen awake" id="phoneScreen">
+        <!-- Dev overlay -->
+        <div class="dev-overlay" id="devOverlay">
+            <div class="dev-overlay-row">
+                <div class="dev-overlay-box" id="devFpsBox">FPS: -- • CPU: --%</div>
+                <div class="dev-overlay-box" id="devNetBox">Net: -- • Ping: --ms</div>
+            </div>
+        </div>
+
+        <div class="dropdown-shade" id="dropdownShade">
+            <div class="shade-header">
+                <div>
+                    <div class="shade-title">GSO Quick Panel</div>
+                    <div style="font-size:11px;opacity:0.8;" id="shadeSubtitle">Balanced • Network: detecting…</div>
+                </div>
+                <button class="btn btn-secondary" style="padding:4px 8px;font-size:10px;" id="btnShadeClose">Close</button>
+            </div>
+            <div class="shade-grid">
+                <div class="shade-tile active" data-toggle="wifi">
+                    <div>📶</div>
+                    <div class="shade-tile-label">Wi‑Fi</div>
+                </div>
+                <div class="shade-tile active" data-toggle="bt">
+                    <div>🌀</div>
+                    <div class="shade-tile-label">Bluetooth</div>
+                </div>
+                <div class="shade-tile active" data-toggle="cell">
+                    <div>📡</div>
+                    <div class="shade-tile-label">Cellular</div>
+                </div>
+                <div class="shade-tile" data-toggle="airplane">
+                    <div>✈️</div>
+                    <div class="shade-tile-label">Airplane</div>
+                </div>
+                <div class="shade-tile active" data-toggle="dnd">
+                    <div>🌙</div>
+                    <div class="shade-tile-label">Do Not Disturb</div>
+                </div>
+                <div class="shade-tile" data-toggle="hotspot">
+                    <div>📲</div>
+                    <div class="shade-tile-label">Hotspot</div>
+                </div>
+                <div class="shade-tile" data-toggle="batterySaver">
+                    <div>🪫</div>
+                    <div class="shade-tile-label">Battery Saver</div>
+                </div>
+                <div class="shade-tile" data-toggle="devMode">
+                    <div>👨‍💻</div>
+                    <div class="shade-tile-label">Dev Mode</div>
+                </div>
+            </div>
+            <div class="shade-slider-row">
+                <div class="shade-slider-label">Brightness</div>
+                <input type="range" min="10" max="100" value="70" class="shade-slider" id="brightnessSlider">
+            </div>
+            <div class="shade-slider-row">
+                <div class="shade-slider-label">Media volume</div>
+                <input type="range" min="0" max="100" value="60" class="shade-slider" id="volumeSlider">
+            </div>
+        </div>
+
+        <div class="status-bar" id="statusBar">
+            <div class="status-left">
+                <span id="statusTime">18:41</span>
+            </div>
+            <div class="status-center">
+                GSO PHONE
+            </div>
+            <div class="status-right">
+                <div class="icon-signal"><div class="signal-bar"></div></div>
+                <div class="icon-wifi"><div class="wifi-dot"></div></div>
+                <div class="icon-battery">
+                    <div class="battery-level" id="batteryLevel"></div>
+                </div>
+                <span id="batteryPercent" style="font-size:10px;">100%</span>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="boot-screen active" id="bootScreen">
+                <div class="boot-logo">GSO</div>
+                <div class="boot-sub">GSO Phone OS • Ultra Simulated</div>
+                <div class="boot-loader"><div class="boot-loader-fill"></div></div>
+                <div class="sleep-hint">Booting… using your real time & network</div>
+            </div>
+
+            <div class="shutdown-screen" id="shutdownScreen">
+                <div class="boot-logo">GSO</div>
+                <div class="shutdown-screen-text">
+                    Shutting down GSO Phone…<br>
+                    All systems are now offline.
+                </div>
+                <div class="shutdown-hint">
+                    Press the power button to boot again.
+                </div>
+            </div>
+
+            <div class="sleep-overlay" id="sleepOverlay"></div>
+
+            <div class="lock-screen" id="lockScreen">
+                <div>
+                    <div class="lock-time" id="lockTime">18:41</div>
+                    <div class="lock-date" id="lockDate">Friday, February 20</div>
+                </div>
+                <div class="lock-notifications" id="lockNotifications"></div>
+                <div>
+                    <div class="lock-pin">
+                        <div class="pin-dots" id="pinDots">
+                            <div class="pin-dot"></div>
+                            <div class="pin-dot"></div>
+                            <div class="pin-dot"></div>
+                            <div class="pin-dot"></div>
+                        </div>
+                        <div class="pin-pad" id="pinPad">
+                            <button class="pin-key" data-key="1"><span>1</span></button>
+                            <button class="pin-key" data-key="2"><span>2</span></button>
+                            <button class="pin-key" data-key="3"><span>3</span></button>
+                            <button class="pin-key" data-key="4"><span>4</span></button>
+                            <button class="pin-key" data-key="5"><span>5</span></button>
+                            <button class="pin-key" data-key="6"><span>6</span></button>
+                            <button class="pin-key" data-key="7"><span>7</span></button>
+                            <button class="pin-key" data-key="8"><span>8</span></button>
+                            <button class="pin-key" data-key="9"><span>9</span></button>
+                            <button class="pin-key" data-key="clear"><span>⌫</span></button>
+                            <button class="pin-key" data-key="0"><span>0</span></button>
+                            <button class="pin-key" data-key="ok"><span>⏎</span></button>
+                        </div>
+                    </div>
+                    <div class="lock-footer">
+                        Real time. Real network status. Fake phone.<br>
+                        GSO Phone runs entirely in your browser.
+                    </div>
+                </div>
+            </div>
+
+            <div class="home-screen" id="homeScreen">
+                <div>
+                    <div class="widget-row">
+                        <div class="widget">
+                            <div class="widget-title">Weather • Your location</div>
+                            <div class="widget-main" id="widgetWeatherMain">--°C</div>
+                            <div class="widget-sub" id="widgetWeatherSub">Fetching real temperature…</div>
+                        </div>
+                        <div class="widget">
+                            <div class="widget-title">System status</div>
+                            <div class="widget-main" id="widgetStatusMain">All systems ready</div>
+                            <div class="widget-sub" id="widgetStatusSub">Battery: 100% • Network: detecting…</div>
+                        </div>
+                    </div>
+                    <div class="widget-row">
+                        <div class="widget">
+                            <div class="widget-title">Today</div>
+                            <div class="widget-main" id="widgetTodayMain">Loading real date…</div>
+                            <div class="widget-sub">Events list is simulated, but time is real.</div>
+                        </div>
+                    </div>
+                    <div class="app-grid" id="appGrid"></div>
+                </div>
+                <div>
+                    <div class="dock" id="dock"></div>
+                </div>
+            </div>
+
+            <div class="app-screen" id="appScreen">
+                <div class="app-header">
+                    <div class="app-back" id="btnAppBack">‹</div>
+                    <div class="app-title" id="appTitle">App</div>
+                </div>
+                <div class="app-body" id="appBody"></div>
+            </div>
+
+            <div class="recents-strip" id="recentsStrip">
+                <div class="recents-pill" id="btnRecents"></div>
+            </div>
+        </div>
+
+        <div class="volume-overlay" id="volumeOverlay">
+            <div class="volume-icon" id="volumeIcon">🔊</div>
+            <div class="volume-bar">
+                <div class="volume-fill" id="volumeFill" style="height:60%;"></div>
+            </div>
+        </div>
+
+        <div class="power-menu" id="powerMenu">
+            <div class="power-menu-card">
+                <div class="power-menu-title">GSO Power Menu</div>
+                <div class="power-menu-buttons">
+                    <button class="btn btn-primary" id="btnShutdown">Power off</button>
+                    <button class="btn btn-secondary" id="btnRestart">Restart</button>
+                    <button class="btn btn-secondary" id="btnEmergency">Emergency mode</button>
+                    <button class="btn btn-secondary" id="btnCancelPower">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const LS_KEY = 'gsoPhoneStateDevV1';
+
+    const phoneScreen = document.getElementById('phoneScreen');
+    const bootScreen = document.getElementById('bootScreen');
+    const shutdownScreen = document.getElementById('shutdownScreen');
+    const sleepOverlay = document.getElementById('sleepOverlay');
+    const lockScreen = document.getElementById('lockScreen');
+    const homeScreen = document.getElementById('homeScreen');
+    const appScreen = document.getElementById('appScreen');
+    const appTitle = document.getElementById('appTitle');
+    const appBody = document.getElementById('appBody');
+    const statusTime = document.getElementById('statusTime');
+    const lockTime = document.getElementById('lockTime');
+    const lockDate = document.getElementById('lockDate');
+    const batteryLevel = document.getElementById('batteryLevel');
+    const batteryPercent = document.getElementById('batteryPercent');
+    const widgetStatusSub = document.getElementById('widgetStatusSub');
+    const widgetWeatherMain = document.getElementById('widgetWeatherMain');
+    const widgetWeatherSub = document.getElementById('widgetWeatherSub');
+    const widgetTodayMain = document.getElementById('widgetTodayMain');
+    const dropdownShade = document.getElementById('dropdownShade');
+    const btnShadeClose = document.getElementById('btnShadeClose');
+    const brightnessSlider = document.getElementById('brightnessSlider');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const volumeOverlay = document.getElementById('volumeOverlay');
+    const volumeFill = document.getElementById('volumeFill');
+    const volumeIcon = document.getElementById('volumeIcon');
+    const toast = document.getElementById('toast');
+    const powerMenu = document.getElementById('powerMenu');
+    const btnPower = document.getElementById('btnPower');
+    const btnVolUp = document.getElementById('btnVolUp');
+    const btnVolDown = document.getElementById('btnVolDown');
+    const btnAppBack = document.getElementById('btnAppBack');
+    const btnRecents = document.getElementById('btnRecents');
+    const recentsStrip = document.getElementById('recentsStrip');
+    const lockNotifications = document.getElementById('lockNotifications');
+    const statusBar = document.getElementById('statusBar');
+    const shadeSubtitle = document.getElementById('shadeSubtitle');
+
+    const btnShutdown = document.getElementById('btnShutdown');
+    const btnRestart = document.getElementById('btnRestart');
+    const btnEmergency = document.getElementById('btnEmergency');
+    const btnCancelPower = document.getElementById('btnCancelPower');
+
+    const pinDots = document.getElementById('pinDots').children;
+    const pinPad = document.getElementById('pinPad');
+
+    const appGrid = document.getElementById('appGrid');
+    const dock = document.getElementById('dock');
+
+    const devOverlay = document.getElementById('devOverlay');
+    const devFpsBox = document.getElementById('devFpsBox');
+    const devNetBox = document.getElementById('devNetBox');
+
+    let intervals = [];
+    let fpsLastTime = performance.now();
+    let fpsFrames = 0;
+    let fpsValue = 0;
+    let cpuValue = 0;
+
+    let state = {
+        poweredOn: true,
+        sleeping: false,
+        locked: true,
+        currentApp: null,
+        volume: 60,
+        battery: 100,
+        fakeWeather: 21,
+        fakeWeatherDesc: 'Fetching real weather…',
+        fakeEvents: 0,
+        wifiOn: true,
+        btOn: true,
+        cellOn: true,
+        airplane: false,
+        dnd: true,
+        hotspot: false,
+        batterySaver: false,
+        devMode: false,
+        brightness: 70,
+        pin: '1234',
+        pinInput: '',
+        powerMenuVisible: false,
+        recents: [],
+        fakeLocationIndex: 0,
+        fakeLocations: [
+            'GSO‑City Center',
+            'GSO‑Riverfront',
+            'GSO‑Tech Park',
+            'GSO‑Old Town',
+            'GSO‑Harbor'
+        ],
+        fakeCallActive: false,
+        fakeCallTimer: 0,
+        emergencyMode: false,
+        storageUsed: 30,
+        galleryPhotos: 0,
+        notesText: '',
+        storeInstalled: {},
+        messages: [],
+        appOrder: null,
+        logs: [],
+        devShowFps: true,
+        devShowTouches: true,
+        devShowBounds: false,
+        devShowCpu: true,
+        devShowNetDebug: true,
+        devSlowAnimations: false,
+        devDebugFlashes: true
+    };
+
+    const apps = [
+        { id: 'phone', name: 'Phone', icon: '📞', type: 'system', dock: true },
+        { id: 'messages', name: 'Messages', icon: '💬', type: 'system', dock: true },
+        { id: 'camera', name: 'Camera', icon: '📷', type: 'media', dock: false },
+        { id: 'gallery', name: 'Gallery', icon: '🖼️', type: 'media', dock: false },
+        { id: 'browser', name: 'Browser', icon: '🌐', type: 'tools', dock: true },
+        { id: 'music', name: 'Music', icon: '🎵', type: 'media', dock: false },
+        { id: 'maps', name: 'Maps', icon: '🗺️', type: 'tools', dock: false },
+        { id: 'files', name: 'Files', icon: '📁', type: 'tools', dock: false },
+        { id: 'notes', name: 'Notes', icon: '📝', type: 'tools', dock: false },
+        { id: 'calendar', name: 'Calendar', icon: '📅', type: 'tools', dock: false },
+        { id: 'settings', name: 'Settings', icon: '⚙️', type: 'system', dock: false },
+        { id: 'store', name: 'GSO Store', icon: '🛒', type: 'store', dock: false },
+
+        // Dev-only apps (visible when devMode is true)
+        { id: 'sysLogs', name: 'System Logs', icon: '📋', type: 'tools', dock: false, devOnly: true },
+        { id: 'uiTuner', name: 'UI Tuner', icon: '🎛️', type: 'tools', dock: false, devOnly: true },
+        { id: 'experiments', name: 'Experiments', icon: '🧪', type: 'tools', dock: false, devOnly: true }
+    ];
+
+    const storeApps = [
+        { id: 'gamesHub', name: 'GSO Games Hub', desc: 'Arcade, puzzles, and fake leaderboards.' },
+        { id: 'socialPlus', name: 'Social+', desc: 'All your imaginary friends in one place.' },
+        { id: 'cryptoWatch', name: 'CryptoWatch', desc: 'Track fake coins to the fake moon.' },
+        { id: 'weatherPro', name: 'Weather Pro+', desc: 'Hyper-detailed simulated forecasts.' },
+        { id: 'gsoMail', name: 'GSO Mail', desc: 'Email client that never actually sends.' }
+    ];
+
+    function logEvent(text) {
+        const now = new Date();
+        const time = now.toLocaleTimeString(undefined, { hour12: false });
+        state.logs.unshift({ time, text });
+        if (state.logs.length > 200) state.logs.pop();
+    }
+
+    function saveState() {
+        const toSave = {
+            battery: state.battery,
+            fakeWeather: state.fakeWeather,
+            fakeWeatherDesc: state.fakeWeatherDesc,
+            fakeEvents: state.fakeEvents,
+            wifiOn: state.wifiOn,
+            btOn: state.btOn,
+            cellOn: state.cellOn,
+            airplane: state.airplane,
+            dnd: state.dnd,
+            hotspot: state.hotspot,
+            batterySaver: state.batterySaver,
+            devMode: state.devMode,
+            brightness: state.brightness,
+            storageUsed: state.storageUsed,
+            galleryPhotos: state.galleryPhotos,
+            notesText: state.notesText,
+            storeInstalled: state.storeInstalled,
+            messages: state.messages,
+            appOrder: state.appOrder,
+            logs: state.logs,
+            devShowFps: state.devShowFps,
+            devShowTouches: state.devShowTouches,
+            devShowBounds: state.devShowBounds,
+            devShowCpu: state.devShowCpu,
+            devShowNetDebug: state.devShowNetDebug,
+            devSlowAnimations: state.devSlowAnimations,
+            devDebugFlashes: state.devDebugFlashes
+        };
+        try {
+            localStorage.setItem(LS_KEY, JSON.stringify(toSave));
+        } catch (e) {}
+    }
+
+    function loadState() {
+        try {
+            const raw = localStorage.getItem(LS_KEY);
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            Object.assign(state, saved);
+        } catch (e) {}
+    }
+
+    function showToast(text, duration = 1500) {
+        toast.textContent = text;
+        toast.style.display = 'block';
+        toast.style.opacity = '1';
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 200);
+        }, duration);
+    }
+
+    function updateTime() {
+        const now = new Date();
+        const h = now.getHours().toString().padStart(2, '0');
+        const m = now.getMinutes().toString().padStart(2, '0');
+        statusTime.textContent = `${h}:${m}`;
+        lockTime.textContent = `${h}:${m}`;
+
+        const options = { weekday: 'long', month: 'long', day: 'numeric' };
+        lockDate.textContent = now.toLocaleDateString(undefined, options);
+        widgetTodayMain.textContent = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+
+    function updateBatteryUI() {
+        batteryLevel.style.width = state.battery + '%';
+        batteryPercent.textContent = state.battery + '%';
+        widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: ${navigator.onLine ? 'Online' : 'Offline'}`;
+    }
+
+    function drainBattery() {
+        if (!state.poweredOn) return;
+        if (state.batterySaver && state.battery > 1) {
+            if (Math.random() < 0.5) return;
+        }
+        if (state.battery > 0) {
+            state.battery -= 1;
+            if (state.battery < 0) state.battery = 0;
+            updateBatteryUI();
+            saveState();
+            logEvent('Battery tick: ' + state.battery + '%');
+            if (state.battery === 15) {
+                showToast('Battery low: 15% remaining');
+                pushNotification('Battery', 'Battery low. Consider enabling Battery Saver.');
+            }
+            if (state.battery === 1) {
+                showToast('Battery critically low. Shutting down…');
+                logEvent('Battery critical, auto shutdown');
+                setTimeout(() => {
+                    performShutdown();
+                }, 1500);
+            }
+        }
+    }
+
+    function updateWeatherFromAPI(lat, lon) {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&current_weather=true`;
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data && data.current_weather) {
+                    const temp = data.current_weather.temperature;
+                    const code = data.current_weather.weathercode;
+                    const descMap = {
+                        0: 'Clear sky',
+                        1: 'Mainly clear',
+                        2: 'Partly cloudy',
+                        3: 'Overcast',
+                        45: 'Fog',
+                        48: 'Depositing rime fog',
+                        51: 'Light drizzle',
+                        53: 'Drizzle',
+                        55: 'Dense drizzle',
+                        61: 'Slight rain',
+                        63: 'Rain',
+                        65: 'Heavy rain',
+                        71: 'Slight snow',
+                        73: 'Snow',
+                        75: 'Heavy snow',
+                        80: 'Rain showers',
+                        81: 'Rain showers',
+                        82: 'Heavy showers',
+                        95: 'Thunderstorm'
+                    };
+                    const desc = descMap[code] || 'Weather data';
+                    state.fakeWeather = temp;
+                    state.fakeWeatherDesc = desc + ' (real)';
+                    widgetWeatherMain.textContent = temp.toFixed(1) + '°C';
+                    widgetWeatherSub.textContent = state.fakeWeatherDesc;
+                    saveState();
+                    logEvent('Weather updated from API');
+                } else {
+                    widgetWeatherSub.textContent = 'Weather service error, using simulated data.';
+                    logEvent('Weather API error, fallback to fake');
+                }
+            })
+            .catch(() => {
+                widgetWeatherSub.textContent = 'Weather service error, using simulated data.';
+                logEvent('Weather API fetch failed');
+            });
+    }
+
+    function initRealWeather() {
+        if (!navigator.geolocation) {
+            widgetWeatherSub.textContent = 'Geolocation not available, using simulated weather.';
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                const { latitude, longitude } = pos.coords;
+                widgetWeatherSub.textContent = 'Using your real location.';
+                logEvent('Geolocation success');
+                updateWeatherFromAPI(latitude, longitude);
+            },
+            () => {
+                widgetWeatherSub.textContent = 'Location denied, using simulated weather.';
+                logEvent('Geolocation denied');
+            },
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 }
+        );
+    }
+
+    function pushNotification(title, body) {
+        if (state.dnd) return;
+        const card = document.createElement('div');
+        card.className = 'notif-card';
+        card.innerHTML = `
+            <div class="notif-title">${title}</div>
+            <div class="notif-body">${body}</div>
+        `;
+        lockNotifications.prepend(card);
+        const cards = lockNotifications.querySelectorAll('.notif-card');
+        if (cards.length > 6) {
+            cards[cards.length - 1].remove();
+        }
+        logEvent('Notification: ' + title + ' – ' + body);
+    }
+
+    function randomNotification() {
+        if (!state.poweredOn) return;
+        const pool = [
+            ['GSO System', 'Background tasks completed successfully.'],
+            ['GSO Store', 'New apps are available for download.'],
+            ['Weather Pro+', 'Check detailed forecast in the Weather Pro+ app.'],
+            ['GSO Assistant', 'You have 0 unread real messages.'],
+            ['Battery', 'Battery health is excellent.']
+        ];
+        const [t, b] = pool[Math.floor(Math.random() * pool.length)];
+        pushNotification(t, b);
+    }
+
+    function setActiveScreen(screen) {
+        [bootScreen, shutdownScreen, sleepOverlay, lockScreen, homeScreen, appScreen].forEach(el => {
+            el.classList.remove('active');
+            el.style.display = 'none';
+        });
+        screen.style.display = 'flex';
+        requestAnimationFrame(() => {
+            screen.classList.add('active');
+        });
+    }
+
+    function goHome() {
+        state.currentApp = null;
+        setActiveScreen(homeScreen);
+        logEvent('Navigate: Home');
+    }
+
+    function lockPhone() {
+        state.locked = true;
+        state.pinInput = '';
+        updatePinDots();
+        setActiveScreen(lockScreen);
+        logEvent('Phone locked');
+    }
+
+    function unlockPhone() {
+        state.locked = false;
+        goHome();
+        logEvent('Phone unlocked');
+    }
+
+    function sleepPhone() {
+        state.sleeping = true;
+        phoneScreen.classList.add('sleeping');
+        phoneScreen.classList.remove('awake');
+        sleepOverlay.style.display = 'flex';
+        requestAnimationFrame(() => {
+            sleepOverlay.classList.add('active');
+        });
+        logEvent('Sleep: screen off');
+    }
+
+    function wakePhone() {
+        state.sleeping = false;
+        phoneScreen.classList.remove('sleeping');
+        phoneScreen.classList.add('awake');
+        sleepOverlay.classList.remove('active');
+        setTimeout(() => {
+            sleepOverlay.style.display = 'none';
+        }, 200);
+        if (state.locked) {
+            setActiveScreen(lockScreen);
+        } else if (state.currentApp) {
+            setActiveScreen(appScreen);
+        } else {
+            setActiveScreen(homeScreen);
+        }
+        logEvent('Wake: screen on');
+    }
+
+    function clearAllIntervals() {
+        intervals.forEach(id => clearInterval(id));
+        intervals = [];
+    }
+
+    function performShutdown() {
+        state.poweredOn = false;
+        state.sleeping = false;
+        state.locked = true;
+        state.currentApp = null;
+        state.powerMenuVisible = false;
+        powerMenu.style.display = 'none';
+        clearAllIntervals();
+        setActiveScreen(shutdownScreen);
+        saveState();
+        logEvent('System: shutdown');
+    }
+
+    function performBoot() {
+        state.poweredOn = true;
+        state.sleeping = false;
+        state.locked = true;
+        state.currentApp = null;
+        setActiveScreen(bootScreen);
+        logEvent('System: boot');
+        setTimeout(() => {
+            lockPhone();
+            startIntervals();
+        }, 2000);
+    }
+
+    function showPowerMenu() {
+        if (!state.poweredOn) return;
+        state.powerMenuVisible = true;
+        powerMenu.style.display = 'flex';
+        logEvent('Power menu opened');
+    }
+
+    function hidePowerMenu() {
+        state.powerMenuVisible = false;
+        powerMenu.style.display = 'none';
+        logEvent('Power menu closed');
+    }
+
+    function showVolumeOverlay() {
+        volumeOverlay.style.display = 'flex';
+        volumeFill.style.height = state.volume + '%';
+        if (state.volume === 0) {
+            volumeIcon.textContent = '🔇';
+        } else if (state.volume < 40) {
+            volumeIcon.textContent = '🔉';
+        } else {
+            volumeIcon.textContent = '🔊';
+        }
+        setTimeout(() => {
+            volumeOverlay.style.opacity = '0';
+            setTimeout(() => {
+                volumeOverlay.style.display = 'none';
+                volumeOverlay.style.opacity = '1';
+            }, 180);
+        }, 800);
+    }
+
+    function changeVolume(delta) {
+        state.volume = Math.max(0, Math.min(100, state.volume + delta));
+        volumeSlider.value = state.volume;
+        showVolumeOverlay();
+        saveState();
+        logEvent('Volume changed: ' + state.volume);
+    }
+
+    function updateBrightness() {
+        const v = state.brightness / 100;
+        phoneScreen.style.filter = `brightness(${0.4 + v * 0.6})`;
+    }
+
+    function updatePinDots() {
+        for (let i = 0; i < pinDots.length; i++) {
+            pinDots[i].classList.toggle('filled', i < state.pinInput.length);
+        }
+    }
+
+    function handlePinKey(key) {
+        if (key === 'clear') {
+            state.pinInput = state.pinInput.slice(0, -1);
+        } else if (key === 'ok') {
+            if (state.pinInput === state.pin) {
+                unlockPhone();
+                showToast('Unlocked GSO Phone');
+            } else {
+                showToast('Incorrect PIN');
+                state.pinInput = '';
+                logEvent('PIN incorrect');
+            }
+        } else {
+            if (state.pinInput.length < 4 && /^[0-9]$/.test(key)) {
+                state.pinInput += key;
+            }
+        }
+        updatePinDots();
+    }
+
+    function ensureAppOrder() {
+        if (!state.appOrder || !Array.isArray(state.appOrder)) {
+            state.appOrder = apps.map(a => a.id);
+        } else {
+            const knownIds = new Set(apps.map(a => a.id));
+            state.appOrder = state.appOrder.filter(id => knownIds.has(id));
+            apps.forEach(a => {
+                if (!state.appOrder.includes(a.id)) state.appOrder.push(a.id);
+            });
+        }
+    }
+
+    function renderApps() {
+        ensureAppOrder();
+        appGrid.innerHTML = '';
+        dock.innerHTML = '';
+
+        const orderMap = {};
+        state.appOrder.forEach((id, idx) => orderMap[id] = idx);
+
+        const sortedApps = [...apps].filter(a => !a.devOnly || state.devMode).sort((a, b) => orderMap[a.id] - orderMap[b.id]);
+
+        sortedApps.forEach(app => {
+            const icon = document.createElement('div');
+            icon.className = 'app-icon';
+            icon.dataset.appId = app.id;
+            icon.draggable = true;
+            icon.innerHTML = `
+                <div class="app-icon-circle ${app.type}">
+                    <span>${app.icon}</span>
+                </div>
+                <div>${app.name}</div>
+            `;
+            appGrid.appendChild(icon);
+
+            if (app.dock) {
+                const dockIcon = icon.cloneNode(true);
+                dockIcon.draggable = false;
+                dock.appendChild(dockIcon);
+            }
+        });
+
+        initAppDragAndDrop();
+
+        storeApps.forEach(app => {
+            if (state.storeInstalled[app.id]) {
+                const icon = document.createElement('div');
+                icon.className = 'app-icon';
+                icon.dataset.appId = app.id;
+                icon.draggable = true;
+                icon.innerHTML = `
+                    <div class="app-icon-circle tools">
+                        <span>★</span>
+                    </div>
+                    <div>${app.name}</div>
+                `;
+                appGrid.appendChild(icon);
+            }
+        });
+    }
+
+    let dragSourceId = null;
+
+    function initAppDragAndDrop() {
+        appGrid.querySelectorAll('.app-icon').forEach(icon => {
+            icon.addEventListener('dragstart', e => {
+                dragSourceId = icon.dataset.appId;
+                e.dataTransfer.effectAllowed = 'move';
+                icon.style.opacity = '0.4';
+            });
+            icon.addEventListener('dragend', () => {
+                icon.style.opacity = '1';
+            });
+            icon.addEventListener('dragover', e => {
+                e.preventDefault();
+                icon.classList.add('drag-over');
+            });
+            icon.addEventListener('dragleave', () => {
+                icon.classList.remove('drag-over');
+            });
+            icon.addEventListener('drop', e => {
+                e.preventDefault();
+                icon.classList.remove('drag-over');
+                const targetId = icon.dataset.appId;
+                if (!dragSourceId || dragSourceId === targetId) return;
+                const order = state.appOrder;
+                const fromIndex = order.indexOf(dragSourceId);
+                const toIndex = order.indexOf(targetId);
+                if (fromIndex === -1 || toIndex === -1) return;
+                order.splice(fromIndex, 1);
+                order.splice(toIndex, 0, dragSourceId);
+                state.appOrder = order;
+                saveState();
+                logEvent('App reordered: ' + dragSourceId + ' -> ' + targetId);
+                renderApps();
+            });
+        });
+    }
+
+    function openApp(appId) {
+        if (!state.poweredOn || state.sleeping) return;
+        if (state.locked) {
+            showToast('Unlock phone to open apps');
+            return;
+        }
+        state.currentApp = appId;
+        setActiveScreen(appScreen);
+        renderApp(appId);
+        addToRecents(appId);
+        logEvent('Open app: ' + appId);
+        if (state.devDebugFlashes) {
+            phoneScreen.classList.add('dev-flash');
+            setTimeout(() => phoneScreen.classList.remove('dev-flash'), 150);
+        }
+    }
+
+    function addToRecents(appId) {
+        state.recents = state.recents.filter(id => id !== appId);
+        state.recents.unshift(appId);
+        if (state.recents.length > 5) state.recents.pop();
+    }
+
+    function renderRecents() {
+        if (state.recents.length === 0) {
+            showToast('No recent apps');
+            return;
+        }
+        let msg = 'Recent apps: ';
+        msg += state.recents.map(id => {
+            const app = apps.find(a => a.id === id) || storeApps.find(a => a.id === id);
+            return app ? app.name : id;
+        }).join(', ');
+        showToast(msg, 2000);
+    }
+
+    function renderApp(appId) {
+        const app = apps.find(a => a.id === appId) || storeApps.find(a => a.id === appId);
+        appTitle.textContent = app ? app.name : 'App';
+        appBody.innerHTML = '';
+
+        switch (appId) {
+            case 'phone':
+                renderPhoneApp();
+                break;
+            case 'messages':
+                renderMessagesApp();
+                break;
+            case 'camera':
+                renderCameraApp();
+                break;
+            case 'gallery':
+                renderGalleryApp();
+                break;
+            case 'browser':
+                renderBrowserApp();
+                break;
+            case 'music':
+                renderMusicApp();
+                break;
+            case 'maps':
+                renderMapsApp();
+                break;
+            case 'files':
+                renderFilesApp();
+                break;
+            case 'notes':
+                renderNotesApp();
+                break;
+            case 'calendar':
+                renderCalendarApp();
+                break;
+            case 'settings':
+                renderSettingsApp();
+                break;
+            case 'store':
+                renderStoreApp();
+                break;
+            case 'gamesHub':
+                renderGamesHubApp();
+                break;
+            case 'socialPlus':
+                renderSocialPlusApp();
+                break;
+            case 'cryptoWatch':
+                renderCryptoWatchApp();
+                break;
+            case 'weatherPro':
+                renderWeatherProApp();
+                break;
+            case 'gsoMail':
+                renderGsoMailApp();
+                break;
+            case 'sysLogs':
+                renderSysLogsApp();
+                break;
+            case 'uiTuner':
+                renderUiTunerApp();
+                break;
+            case 'experiments':
+                renderExperimentsApp();
+                break;
+            default:
+                appBody.innerHTML = '<p>This app is simulated but has no UI yet.</p>';
+        }
+    }
+
+    function renderPhoneApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Fake call controls</div>
+            <div class="call-screen">
+                <div class="call-name" id="callName">Unknown Caller</div>
+                <div class="call-status" id="callStatus">No active call</div>
+                <div class="call-controls">
+                    <button class="call-btn fake" id="btnFakeIncoming">Fake call</button>
+                    <button class="call-btn accept" id="btnAcceptCall">✓</button>
+                    <button class="call-btn decline" id="btnDeclineCall">✕</button>
+                </div>
+            </div>
+            <div class="app-section-title" style="margin-top:16px;">Recent fake calls</div>
+            <div id="callLog">
+                <div class="list-item">
+                    <div class="list-item-title">GSO Support</div>
+                    <div class="list-item-sub">Today • 0:00 • Missed (fake)</div>
+                </div>
+                <div class="list-item">
+                    <div class="list-item-title">Unknown</div>
+                    <div class="list-item-sub">Yesterday • 0:00 • Incoming (fake)</div>
+                </div>
+            </div>
+        `;
+
+        const callName = document.getElementById('callName');
+        const callStatus = document.getElementById('callStatus');
+        const btnFakeIncoming = document.getElementById('btnFakeIncoming');
+        const btnAcceptCall = document.getElementById('btnAcceptCall');
+        const btnDeclineCall = document.getElementById('btnDeclineCall');
+
+        let callInterval = null;
+
+        function resetCall() {
+            state.fakeCallActive = false;
+            state.fakeCallTimer = 0;
+            if (callInterval) clearInterval(callInterval);
+            callStatus.textContent = 'No active call';
+            callName.textContent = 'Unknown Caller';
+        }
+
+        btnFakeIncoming.onclick = () => {
+            if (state.fakeCallActive) {
+                showToast('Call already active');
+                return;
+            }
+            state.fakeCallActive = true;
+            state.fakeCallTimer = 0;
+            callName.textContent = 'GSO System';
+            callStatus.textContent = 'Incoming call…';
+            showToast('Incoming fake call');
+            logEvent('Fake call incoming');
+        };
+
+        btnAcceptCall.onclick = () => {
+            if (!state.fakeCallActive) {
+                showToast('No call to accept');
+                return;
+            }
+            callStatus.textContent = 'In call: 0:00';
+            if (callInterval) clearInterval(callInterval);
+            callInterval = setInterval(() => {
+                state.fakeCallTimer++;
+                const m = Math.floor(state.fakeCallTimer / 60).toString().padStart(1, '0');
+                const s = (state.fakeCallTimer % 60).toString().padStart(2, '0');
+                callStatus.textContent = `In call: ${m}:${s}`;
+            }, 1000);
+            logEvent('Fake call accepted');
+        };
+
+        btnDeclineCall.onclick = () => {
+            if (!state.fakeCallActive) {
+                showToast('No call to end');
+                return;
+            }
+            state.fakeCallActive = false;
+            state.fakeCallTimer = 0;
+            if (callInterval) clearInterval(callInterval);
+            callStatus.textContent = 'Call ended (fake)';
+            logEvent('Fake call ended');
+            setTimeout(resetCall, 1500);
+        };
+    }
+
+    function renderMessagesApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Conversations</div>
+            <div id="messagesList"></div>
+            <div class="messages-input-row">
+                <input type="text" id="messageInput" placeholder="Type a message…">
+                <button id="btnSendMessage">Send</button>
+            </div>
+            <div class="sleep-hint">Messages are stored locally in this browser only.</div>
+        `;
+        const list = document.getElementById('messagesList');
+        const input = document.getElementById('messageInput');
+        const btnSend = document.getElementById('btnSendMessage');
+
+        function renderMessages() {
+            list.innerHTML = '';
+            if (state.messages.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'list-item';
+                empty.innerHTML = `
+                    <div class="list-item-title">GSO System</div>
+                    <div class="list-item-sub">"This is a fake SMS. Nothing leaves your browser."</div>
+                `;
+                list.appendChild(empty);
+            } else {
+                state.messages.forEach(msg => {
+                    const item = document.createElement('div');
+                    item.className = 'list-item';
+                    item.innerHTML = `
+                        <div class="list-item-title">${msg.from}</div>
+                        <div class="list-item-sub">${msg.text}</div>
+                    `;
+                    list.appendChild(item);
+                });
+            }
+        }
+
+        renderMessages();
+
+        btnSend.onclick = () => {
+            const text = input.value.trim();
+            if (!text) return;
+            state.messages.push({ from: 'You', text });
+            saveState();
+            input.value = '';
+            renderMessages();
+            logEvent('Message sent: ' + text);
+        };
+
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                btnSend.click();
+            }
+        });
+    }
+
+    function renderCameraApp() {
+        appBody.innerHTML = `
+            <div class="camera-preview" id="cameraPreview">
+                <div class="camera-overlay-text">Fake live preview • Scene: GSO‑City</div>
+            </div>
+            <div class="camera-controls">
+                <div class="camera-mode">PHOTO</div>
+                <button class="camera-shutter" id="btnShutter"></button>
+                <div class="camera-mode">VIDEO</div>
+            </div>
+            <div class="app-section-title" style="margin-top:10px;">Info</div>
+            <div style="font-size:11px;opacity:0.8;">
+                This camera does not access your real camera. Captured photos are generated placeholders stored in the fake gallery.
+            </div>
+        `;
+        const btnShutter = document.getElementById('btnShutter');
+        const preview = document.getElementById('cameraPreview');
+        btnShutter.onclick = () => {
+            preview.style.transform = 'scale(0.97)';
+            setTimeout(() => preview.style.transform = 'scale(1)', 120);
+            state.galleryPhotos++;
+            state.storageUsed = Math.min(99, state.storageUsed + 1);
+            saveState();
+            showToast('Captured fake photo');
+            logEvent('Fake photo captured');
+        };
+    }
+
+    function renderGalleryApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Fake gallery</div>
+            <div style="font-size:11px;opacity:0.8;margin-bottom:6px;">
+                Photos shown here are generated by the simulator. No real images are stored.
+            </div>
+            <div class="gallery-grid" id="galleryGrid"></div>
+        `;
+        const grid = document.getElementById('galleryGrid');
+        const count = Math.max(3, state.galleryPhotos);
+        for (let i = 0; i < count; i++) {
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+            item.textContent = 'GSO Shot #' + (i + 1);
+            grid.appendChild(item);
+        }
+    }
+
+    function renderBrowserApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">GSO Browser</div>
+            <div class="error-banner">
+                You can open real websites in a new tab. Type a URL below.
+            </div>
+            <div class="browser-input-row">
+                <input type="text" id="browserUrl" placeholder="https://example.com">
+                <button id="btnOpenUrl">Go</button>
+            </div>
+            <div class="list-item">
+                <div class="list-item-title">Tips</div>
+                <div class="list-item-sub">URLs open in your real browser tab. History is not stored here.</div>
+            </div>
+            <div class="list-item">
+                <div class="list-item-title">Quick links</div>
+                <div class="list-item-sub">
+                    <span class="pill" data-url="https://www.bing.com">Bing</span>
+                    <span class="pill" data-url="https://www.wikipedia.org">Wikipedia</span>
+                    <span class="pill" data-url="https://www.youtube.com">YouTube</span>
+                </div>
+            </div>
+        `;
+        const input = document.getElementById('browserUrl');
+        const btnOpen = document.getElementById('btnOpenUrl');
+        const pills = appBody.querySelectorAll('.pill[data-url]');
+
+        function openUrl(url) {
+            if (!url) return;
+            let finalUrl = url.trim();
+            if (!/^https?:\/\//i.test(finalUrl)) {
+                finalUrl = 'https://' + finalUrl;
+            }
+            window.open(finalUrl, '_blank');
+            logEvent('Browser open: ' + finalUrl);
+        }
+
+        btnOpen.onclick = () => {
+            openUrl(input.value);
+        };
+
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                openUrl(input.value);
+            }
+        });
+
+        pills.forEach(p => {
+            p.style.cursor = 'pointer';
+            p.onclick = () => {
+                openUrl(p.dataset.url);
+            };
+        });
+    }
+
+    function renderMusicApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Now playing</div>
+            <div class="list-item">
+                <div class="list-item-title">"Synthetic Dreams"</div>
+                <div class="list-item-sub">Artist: GSO Synth Lab</div>
+                <div class="pill">Status: Pretending to play</div>
+            </div>
+            <audio id="gsoAudio" src="https://upload.wikimedia.org/wikipedia/commons/transcoded/4/45/Beep-09.ogg/Beep-09.ogg.mp3"></audio>
+            <div class="app-section-title" style="margin-top:10px;">Controls</div>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+                <button class="btn btn-secondary" style="flex:1;" id="btnPrevTrack">⏮</button>
+                <button class="btn btn-secondary" style="flex:1;" id="btnPlayPause">▶</button>
+                <button class="btn btn-secondary" style="flex:1;" id="btnNextTrack">⏭</button>
+            </div>
+            <div class="sleep-hint">This plays a tiny beep so the player actually does something.</div>
+        `;
+        const btnPlayPause = document.getElementById('btnPlayPause');
+        const audio = document.getElementById('gsoAudio');
+        let playing = false;
+        btnPlayPause.onclick = () => {
+            playing = !playing;
+            btnPlayPause.textContent = playing ? '⏸' : '▶';
+            if (playing) {
+                audio.currentTime = 0;
+                audio.play().catch(() => {});
+                showToast('Playing tiny beep');
+                logEvent('Music play');
+            } else {
+                audio.pause();
+                showToast('Paused');
+                logEvent('Music pause');
+            }
+        };
+    }
+
+    function renderMapsApp() {
+        appBody.innerHTML = `
+            <div class="map-box">
+                <div class="map-marker" id="mapMarker"></div>
+                <div class="map-label" id="mapLabel">Locating…</div>
+            </div>
+            <div class="app-section-title">Fake GPS</div>
+            <div style="font-size:11px;opacity:0.8;">
+                Location is simulated and cycles through several GSO‑City landmarks. No real GPS is used here.
+            </div>
+            <div style="margin-top:8px;">
+                <span class="mini-chip">Mode: Simulation</span>
+                <span class="mini-chip">Accuracy: 0 m (imaginary)</span>
+            </div>
+        `;
+        const marker = document.getElementById('mapMarker');
+        const label = document.getElementById('mapLabel');
+        const x = 20 + Math.random() * 60;
+        const y = 20 + Math.random() * 60;
+        marker.style.left = x + '%';
+        marker.style.top = y + '%';
+        marker.style.transform = 'translate(-50%, -50%)';
+        label.textContent = state.fakeLocations[state.fakeLocationIndex];
+        state.fakeLocationIndex = (state.fakeLocationIndex + 1) % state.fakeLocations.length;
+        logEvent('Maps fake location: ' + label.textContent);
+    }
+
+    function renderFilesApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Storage</div>
+            <div style="font-size:11px;opacity:0.8;">
+                Storage usage is simulated based on your fake photos and apps.
+            </div>
+            <div class="storage-bar">
+                <div class="storage-fill" id="storageFill"></div>
+            </div>
+            <div style="font-size:11px;margin-top:4px;">
+                Used: <span id="storageUsedLabel"></span> / 128 GB (fake)
+            </div>
+            <div class="app-section-title" style="margin-top:10px;">Export</div>
+            <div class="list-item">
+                <div class="list-item-title">Download state snapshot</div>
+                <div class="list-item-sub">Save a JSON file of your GSO Phone state.</div>
+            </div>
+            <button class="btn btn-secondary" id="btnExportState" style="margin-top:6px;">Download JSON</button>
+        `;
+        const storageFill = document.getElementById('storageFill');
+        const storageUsedLabel = document.getElementById('storageUsedLabel');
+        storageFill.style.width = state.storageUsed + '%';
+        const usedGB = (128 * state.storageUsed / 100).toFixed(1);
+        storageUsedLabel.textContent = usedGB + ' GB';
+
+        const btnExport = document.getElementById('btnExportState');
+        btnExport.onclick = () => {
+            const data = JSON.stringify(state, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'gso-phone-state.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            logEvent('State exported as JSON');
+        };
+    }
+
+    function renderNotesApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Quick note</div>
+            <textarea id="noteArea" style="width:100%;height:120px;border-radius:10px;border:none;padding:6px;font-size:12px;background:rgba(255,255,255,0.05);color:#fff;resize:none;"></textarea>
+            <div class="sleep-hint">Stored locally in your browser. Clear storage to erase.</div>
+        `;
+        const noteArea = document.getElementById('noteArea');
+        noteArea.value = state.notesText || '';
+        noteArea.addEventListener('input', () => {
+            state.notesText = noteArea.value;
+            saveState();
+        });
+    }
+
+    function renderCalendarApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Today</div>
+            <div class="list-item">
+                <div class="list-item-title">No real events</div>
+                <div class="list-item-sub">You are free to simulate anything.</div>
+            </div>
+            <div class="app-section-title" style="margin-top:10px;">Suggestions</div>
+            <div class="list-item">
+                <div class="list-item-title">Explore GSO Phone</div>
+                <div class="list-item-sub">Try power menu, volume, store, maps, and Dev Options.</div>
+            </div>
+        `;
+    }
+
+    function renderSettingsApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Network & connectivity</div>
+            <div class="settings-row">
+                <div class="settings-label">Wi‑Fi</div>
+                <div class="toggle ${state.wifiOn ? 'on' : ''}" id="toggleWifi"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">Bluetooth</div>
+                <div class="toggle ${state.btOn ? 'on' : ''}" id="toggleBt"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">Airplane mode</div>
+                <div class="toggle ${state.airplane ? 'on' : ''}" id="toggleAirplane"><div class="toggle-knob"></div></div>
+            </div>
+
+            <div class="app-section-title">Battery</div>
+            <div class="settings-row">
+                <div class="settings-label">Battery Saver</div>
+                <div class="toggle ${state.batterySaver ? 'on' : ''}" id="toggleBatterySaver"><div class="toggle-knob"></div></div>
+            </div>
+            <div style="font-size:11px;opacity:0.8;margin-top:4px;">
+                Battery: ${state.battery}% • Health: 100% (fake)
+            </div>
+
+            <div class="app-section-title">Developer options</div>
+            <div class="settings-row">
+                <div class="settings-label">Developer mode</div>
+                <div class="toggle ${state.devMode ? 'on' : ''}" id="toggleDevMode"><div class="toggle-knob"></div></div>
+            </div>
+            <div style="font-size:11px;opacity:0.8;margin-top:4px;">
+                When enabled, extra overlays, logs, and hidden apps become available.
+            </div>
+        `;
+
+        const toggleWifi = document.getElementById('toggleWifi');
+        const toggleBt = document.getElementById('toggleBt');
+        const toggleAirplane = document.getElementById('toggleAirplane');
+        const toggleBatterySaver = document.getElementById('toggleBatterySaver');
+        const toggleDevMode = document.getElementById('toggleDevMode');
+
+        toggleWifi.onclick = () => {
+            state.wifiOn = !state.wifiOn;
+            toggleWifi.classList.toggle('on', state.wifiOn);
+            widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: ${navigator.onLine && state.wifiOn ? 'Online' : 'Offline'}`;
+            saveState();
+            logEvent('Wi‑Fi: ' + (state.wifiOn ? 'on' : 'off'));
+        };
+        toggleBt.onclick = () => {
+            state.btOn = !state.btOn;
+            toggleBt.classList.toggle('on', state.btOn);
+            saveState();
+            logEvent('Bluetooth: ' + (state.btOn ? 'on' : 'off'));
+        };
+        toggleAirplane.onclick = () => {
+            state.airplane = !state.airplane;
+            toggleAirplane.classList.toggle('on', state.airplane);
+            if (state.airplane) {
+                state.wifiOn = false;
+                state.btOn = false;
+                widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: Airplane mode`;
+                showToast('Airplane mode on');
+                logEvent('Airplane mode on');
+            } else {
+                widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: ${navigator.onLine ? 'Online' : 'Offline'}`;
+                showToast('Airplane mode off');
+                logEvent('Airplane mode off');
+            }
+            saveState();
+        };
+        toggleBatterySaver.onclick = () => {
+            state.batterySaver = !state.batterySaver;
+            toggleBatterySaver.classList.toggle('on', state.batterySaver);
+            showToast(state.batterySaver ? 'Battery Saver enabled' : 'Battery Saver disabled');
+            logEvent('Battery Saver: ' + (state.batterySaver ? 'on' : 'off'));
+            saveState();
+        };
+        toggleDevMode.onclick = () => {
+            state.devMode = !state.devMode;
+            toggleDevMode.classList.toggle('on', state.devMode);
+            showToast(state.devMode ? 'Developer mode enabled' : 'Developer mode disabled');
+            logEvent('Developer mode: ' + (state.devMode ? 'on' : 'off'));
+            if (state.devMode) {
+                pushNotification('Developer mode', 'GSO debug: All logs are imaginary.');
+            }
+            applyDevOptions();
+            renderApps();
+            saveState();
+        };
+    }
+
+    function renderStoreApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Featured apps</div>
+            <div class="app-store-grid" id="storeGrid"></div>
+        `;
+        const grid = document.getElementById('storeGrid');
+        storeApps.forEach(app => {
+            const installed = !!state.storeInstalled[app.id];
+            const card = document.createElement('div');
+            card.className = 'store-card';
+            card.innerHTML = `
+                <div class="store-card-main">
+                    <div class="store-card-title">${app.name}</div>
+                    <div class="store-card-sub">${app.desc}</div>
+                </div>
+                <button class="store-btn ${installed ? 'installed' : ''}" data-app-id="${app.id}">
+                    ${installed ? 'Installed' : 'Get'}
+                </button>
+            `;
+            grid.appendChild(card);
+        });
+
+        grid.querySelectorAll('.store-btn').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.dataset.appId;
+                const app = storeApps.find(a => a.id === id);
+                if (!app) return;
+                if (state.storeInstalled[id]) {
+                    showToast(app.name + ' already installed');
+                } else {
+                    state.storeInstalled[id] = true;
+                    state.storageUsed = Math.min(99, state.storageUsed + 2);
+                    btn.textContent = 'Installed';
+                    btn.classList.add('installed');
+                    renderApps();
+                    saveState();
+                    showToast('Installed ' + app.name);
+                    logEvent('Store install: ' + app.name);
+                }
+            };
+        });
+    }
+
+    function renderGamesHubApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">GSO Games Hub</div>
+            <div class="list-item">
+                <div class="list-item-title">GSO Runner</div>
+                <div class="list-item-sub">Endless running in a world that doesn’t exist.</div>
+            </div>
+            <div class="list-item">
+                <div class="list-item-title">Puzzle Grid</div>
+                <div class="list-item-sub">Solve puzzles that never truly happened.</div>
+            </div>
+            <div class="sleep-hint">Games are not playable, but your curiosity is.</div>
+        `;
+    }
+
+    function renderSocialPlusApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Social+</div>
+            <div class="list-item">
+                <div class="list-item-title">@you</div>
+                <div class="list-item-sub">"Posting from a simulated phone."</div>
+            </div>
+            <div class="list-item">
+                <div class="list-item-title">@gso</div>
+                <div class="list-item-sub">"We love fake engagement."</div>
+            </div>
+            <div class="sleep-hint">No real accounts. No tracking. Just UI.</div>
+        `;
+    }
+
+    function renderCryptoWatchApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">CryptoWatch</div>
+            <div class="list-item">
+                <div class="list-item-title">GSO‑COIN</div>
+                <div class="list-item-sub">+${(5000 + Math.random()*5000).toFixed(0)}% • Totally imaginary gains</div>
+            </div>
+            <div class="list-item">
+                <div class="list-item-title">SIM‑TOKEN</div>
+                <div class="list-item-sub">Volatility: 100% fake</div>
+            </div>
+            <div class="sleep-hint">Prices are random and not connected to any real market.</div>
+        `;
+    }
+
+    function renderWeatherProApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Weather Pro+</div>
+            <div class="list-item">
+                <div class="list-item-title">Your location</div>
+                <div class="list-item-sub">${state.fakeWeather.toFixed(1)}°C • ${state.fakeWeatherDesc}</div>
+            </div>
+            <div class="list-item">
+                <div class="list-item-title">Source</div>
+                <div class="list-item-sub">Data from open-meteo.com when available, otherwise simulated.</div>
+            </div>
+        `;
+    }
+
+    function renderGsoMailApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Inbox</div>
+            <div class="list-item">
+                <div class="list-item-title">welcome@gso.phone</div>
+                <div class="list-item-sub">"Thanks for trying the GSO Phone simulator."</div>
+            </div>
+            <div class="sleep-hint">No emails are sent or received. This is all UI.</div>
+        `;
+    }
+
+    function renderSysLogsApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">System Logs</div>
+            <div class="dev-log-list" id="devLogList"></div>
+            <button class="btn btn-secondary" id="btnClearLogs" style="margin-top:6px;">Clear logs</button>
+            <div class="sleep-hint">Logs are stored only in this browser session.</div>
+        `;
+        const list = document.getElementById('devLogList');
+        const btnClear = document.getElementById('btnClearLogs');
+
+        function renderLogs() {
+            list.innerHTML = '';
+            if (state.logs.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'dev-log-item';
+                empty.innerHTML = `<span class="dev-log-text">No logs yet. Use the phone to generate events.</span>`;
+                list.appendChild(empty);
+                return;
+            }
+            state.logs.forEach(log => {
+                const item = document.createElement('div');
+                item.className = 'dev-log-item';
+                item.innerHTML = `
+                    <span class="dev-log-time">${log.time}</span>
+                    <span class="dev-log-text">${log.text}</span>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        renderLogs();
+
+        btnClear.onclick = () => {
+            state.logs = [];
+            saveState();
+            renderLogs();
+            logEvent('Logs cleared');
+        };
+    }
+
+    function renderUiTunerApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">UI Tuner</div>
+            <div class="settings-row">
+                <div class="settings-label">Slow animations</div>
+                <div class="toggle ${state.devSlowAnimations ? 'on' : ''}" id="toggleSlowAnim"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">Layout bounds</div>
+                <div class="toggle ${state.devShowBounds ? 'on' : ''}" id="toggleBounds"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">Debug flashes</div>
+                <div class="toggle ${state.devDebugFlashes ? 'on' : ''}" id="toggleFlashes"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="sleep-hint">These options affect how the whole UI animates and renders.</div>
+        `;
+        const toggleSlowAnim = document.getElementById('toggleSlowAnim');
+        const toggleBounds = document.getElementById('toggleBounds');
+        const toggleFlashes = document.getElementById('toggleFlashes');
+
+        toggleSlowAnim.onclick = () => {
+            state.devSlowAnimations = !state.devSlowAnimations;
+            toggleSlowAnim.classList.toggle('on', state.devSlowAnimations);
+            applyDevOptions();
+            saveState();
+            logEvent('Dev: slow animations ' + (state.devSlowAnimations ? 'on' : 'off'));
+        };
+        toggleBounds.onclick = () => {
+            state.devShowBounds = !state.devShowBounds;
+            toggleBounds.classList.toggle('on', state.devShowBounds);
+            applyDevOptions();
+            saveState();
+            logEvent('Dev: layout bounds ' + (state.devShowBounds ? 'on' : 'off'));
+        };
+        toggleFlashes.onclick = () => {
+            state.devDebugFlashes = !state.devDebugFlashes;
+            toggleFlashes.classList.toggle('on', state.devDebugFlashes);
+            saveState();
+            logEvent('Dev: debug flashes ' + (state.devDebugFlashes ? 'on' : 'off'));
+        };
+    }
+
+    function renderExperimentsApp() {
+        appBody.innerHTML = `
+            <div class="app-section-title">Experimental features</div>
+            <div class="settings-row">
+                <div class="settings-label">FPS overlay</div>
+                <div class="toggle ${state.devShowFps ? 'on' : ''}" id="toggleFps"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">Touch indicators</div>
+                <div class="toggle ${state.devShowTouches ? 'on' : ''}" id="toggleTouches"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">CPU meter</div>
+                <div class="toggle ${state.devShowCpu ? 'on' : ''}" id="toggleCpu"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="settings-row">
+                <div class="settings-label">Network debug text</div>
+                <div class="toggle ${state.devShowNetDebug ? 'on' : ''}" id="toggleNetDebug"><div class="toggle-knob"></div></div>
+            </div>
+            <div class="sleep-hint">These overlays are visible only while Developer mode is enabled.</div>
+        `;
+        const toggleFps = document.getElementById('toggleFps');
+        const toggleTouches = document.getElementById('toggleTouches');
+        const toggleCpu = document.getElementById('toggleCpu');
+        const toggleNetDebug = document.getElementById('toggleNetDebug');
+
+        toggleFps.onclick = () => {
+            state.devShowFps = !state.devShowFps;
+            toggleFps.classList.toggle('on', state.devShowFps);
+            applyDevOptions();
+            saveState();
+            logEvent('Dev: FPS overlay ' + (state.devShowFps ? 'on' : 'off'));
+        };
+        toggleTouches.onclick = () => {
+            state.devShowTouches = !state.devShowTouches;
+            toggleTouches.classList.toggle('on', state.devShowTouches);
+            saveState();
+            logEvent('Dev: touch indicators ' + (state.devShowTouches ? 'on' : 'off'));
+        };
+        toggleCpu.onclick = () => {
+            state.devShowCpu = !state.devShowCpu;
+            toggleCpu.classList.toggle('on', state.devShowCpu);
+            applyDevOptions();
+            saveState();
+            logEvent('Dev: CPU meter ' + (state.devShowCpu ? 'on' : 'off'));
+        };
+        toggleNetDebug.onclick = () => {
+            state.devShowNetDebug = !state.devShowNetDebug;
+            toggleNetDebug.classList.toggle('on', state.devShowNetDebug);
+            applyDevOptions();
+            saveState();
+            logEvent('Dev: network debug ' + (state.devShowNetDebug ? 'on' : 'off'));
+        };
+    }
+
+    function applyDevOptions() {
+        if (state.devMode && (state.devShowFps || state.devShowCpu || state.devShowNetDebug)) {
+            devOverlay.classList.add('visible');
+        } else {
+            devOverlay.classList.remove('visible');
+        }
+
+        if (state.devMode && state.devShowBounds) {
+            phoneScreen.classList.add('dev-bounds');
+        } else {
+            phoneScreen.classList.remove('dev-bounds');
+        }
+
+        if (state.devMode && state.devSlowAnimations) {
+            phoneScreen.classList.add('dev-slow');
+        } else {
+            phoneScreen.classList.remove('dev-slow');
+        }
+    }
+
+    function initDropdownShade() {
+        statusBar.addEventListener('click', () => {
+            dropdownShade.classList.add('visible');
+        });
+        btnShadeClose.addEventListener('click', () => {
+            dropdownShade.classList.remove('visible');
+        });
+        dropdownShade.querySelectorAll('.shade-tile').forEach(tile => {
+            tile.addEventListener('click', () => {
+                const key = tile.dataset.toggle;
+                tile.classList.toggle('active');
+                switch (key) {
+                    case 'wifi':
+                        state.wifiOn = tile.classList.contains('active');
+                        logEvent('Quick: Wi‑Fi ' + (state.wifiOn ? 'on' : 'off'));
+                        break;
+                    case 'bt':
+                        state.btOn = tile.classList.contains('active');
+                        logEvent('Quick: Bluetooth ' + (state.btOn ? 'on' : 'off'));
+                        break;
+                    case 'cell':
+                        state.cellOn = tile.classList.contains('active');
+                        logEvent('Quick: Cellular ' + (state.cellOn ? 'on' : 'off'));
+                        break;
+                    case 'airplane':
+                        state.airplane = tile.classList.contains('active');
+                        logEvent('Quick: Airplane ' + (state.airplane ? 'on' : 'off'));
+                        break;
+                    case 'dnd':
+                        state.dnd = tile.classList.contains('active');
+                        logEvent('Quick: DND ' + (state.dnd ? 'on' : 'off'));
+                        break;
+                    case 'hotspot':
+                        state.hotspot = tile.classList.contains('active');
+                        logEvent('Quick: Hotspot ' + (state.hotspot ? 'on' : 'off'));
+                        break;
+                    case 'batterySaver':
+                        state.batterySaver = tile.classList.contains('active');
+                        logEvent('Quick: Battery Saver ' + (state.batterySaver ? 'on' : 'off'));
+                        break;
+                    case 'devMode':
+                        state.devMode = tile.classList.contains('active');
+                        logEvent('Quick: Dev mode ' + (state.devMode ? 'on' : 'off'));
+                        showToast(state.devMode ? 'Developer mode enabled' : 'Developer mode disabled');
+                        if (state.devMode) {
+                            pushNotification('Developer mode', 'Quick panel dev mode enabled.');
+                        }
+                        applyDevOptions();
+                        renderApps();
+                        break;
+                }
+                shadeSubtitle.textContent = `Balanced • Network: ${state.wifiOn && navigator.onLine ? 'Online' : 'Offline'}`;
+                updateBatteryUI();
+                saveState();
+            });
+        });
+
+        brightnessSlider.addEventListener('input', () => {
+            state.brightness = parseInt(brightnessSlider.value, 10);
+            updateBrightness();
+            saveState();
+            logEvent('Brightness: ' + state.brightness);
+        });
+
+        volumeSlider.addEventListener('input', () => {
+            state.volume = parseInt(volumeSlider.value, 10);
+            showVolumeOverlay();
+            saveState();
+            logEvent('Volume slider: ' + state.volume);
+        });
+    }
+
+    function initButtons() {
+        let powerDownTime = 0;
+        let powerInterval = null;
+
+        btnPower.addEventListener('mousedown', () => {
+            if (!state.poweredOn) return;
+            powerDownTime = 0;
+            powerInterval = setInterval(() => {
+                powerDownTime += 100;
+                if (powerDownTime >= 800) {
+                    clearInterval(powerInterval);
+                    powerInterval = null;
+                    showPowerMenu();
+                }
+            }, 100);
+        });
+
+        btnPower.addEventListener('mouseup', () => {
+            if (!state.poweredOn) {
+                performBoot();
+                return;
+            }
+            if (powerInterval) {
+                clearInterval(powerInterval);
+                powerInterval = null;
+            }
+            if (powerDownTime < 800) {
+                if (state.sleeping) {
+                    wakePhone();
+                } else {
+                    sleepPhone();
+                }
+            }
+        });
+
+        btnPower.addEventListener('mouseleave', () => {
+            if (powerInterval) {
+                clearInterval(powerInterval);
+                powerInterval = null;
+            }
+        });
+
+        btnVolUp.addEventListener('click', () => {
+            changeVolume(+10);
+        });
+        btnVolDown.addEventListener('click', () => {
+            changeVolume(-10);
+        });
+
+        btnShutdown.onclick = () => {
+            performShutdown();
+        };
+        btnRestart.onclick = () => {
+            hidePowerMenu();
+            setActiveScreen(bootScreen);
+            clearAllIntervals();
+            logEvent('System: restart');
+            setTimeout(() => {
+                lockPhone();
+                startIntervals();
+            }, 2000);
+        };
+        btnEmergency.onclick = () => {
+            state.emergencyMode = !state.emergencyMode;
+            showToast(state.emergencyMode ? 'Emergency mode (fake) enabled' : 'Emergency mode disabled');
+            logEvent('Emergency mode: ' + (state.emergencyMode ? 'on' : 'off'));
+        };
+        btnCancelPower.onclick = hidePowerMenu;
+
+        btnAppBack.onclick = () => {
+            goHome();
+        };
+
+        btnRecents.onclick = () => {
+            renderRecents();
+        };
+
+        sleepOverlay.addEventListener('click', () => {
+            if (state.poweredOn) wakePhone();
+        });
+    }
+
+    function initPinPad() {
+        pinPad.querySelectorAll('.pin-key').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const key = btn.dataset.key;
+                handlePinKey(key);
+            });
+        });
+    }
+
+    function initAppLaunch() {
+        phoneScreen.addEventListener('click', e => {
+            const icon = e.target.closest('.app-icon');
+            if (!icon) return;
+            const appId = icon.dataset.appId;
+            openApp(appId);
+        });
+    }
+
+    function startIntervals() {
+        intervals.push(setInterval(updateTime, 1000));
+        intervals.push(setInterval(drainBattery, 20000));
+        intervals.push(setInterval(randomNotification, 50000));
+    }
+
+    function initDevLoop() {
+        function loop(now) {
+            const dt = now - fpsLastTime;
+            fpsFrames++;
+            if (dt >= 1000) {
+                fpsValue = Math.round((fpsFrames * 1000) / dt);
+                fpsFrames = 0;
+                fpsLastTime = now;
+                cpuValue = Math.round(20 + Math.random() * 40);
+                if (state.devMode && (state.devShowFps || state.devShowCpu || state.devShowNetDebug)) {
+                    let fpsText = 'FPS: ' + (state.devShowFps ? fpsValue : '--');
+                    let cpuText = 'CPU: ' + (state.devShowCpu ? cpuValue + '%' : '--');
+                    devFpsBox.textContent = fpsText + ' • ' + cpuText;
+                    const ping = 20 + Math.round(Math.random() * 80);
+                    const netText = 'Net: ' + (navigator.onLine ? 'Online' : 'Offline');
+                    const pingText = state.devShowNetDebug ? 'Ping: ' + ping + 'ms' : 'Ping: --';
+                    devNetBox.textContent = netText + ' • ' + pingText;
+                }
+            }
+            requestAnimationFrame(loop);
+        }
+        requestAnimationFrame(loop);
+    }
+
+    function initDevTouches() {
+        phoneScreen.addEventListener('pointerdown', e => {
+            if (!state.devMode || !state.devShowTouches) return;
+            const rect = phoneScreen.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const dot = document.createElement('div');
+            dot.className = 'dev-touch-indicator';
+            dot.style.left = x + 'px';
+            dot.style.top = y + 'px';
+            phoneScreen.appendChild(dot);
+            setTimeout(() => {
+                dot.remove();
+            }, 400);
+        });
+    }
+
+    function init() {
+        loadState();
+        ensureAppOrder();
+        renderApps();
+        updateTime();
+        updateBatteryUI();
+        widgetWeatherMain.textContent = state.fakeWeather.toFixed(1) + '°C';
+        widgetWeatherSub.textContent = state.fakeWeatherDesc;
+        brightnessSlider.value = state.brightness;
+        volumeSlider.value = state.volume;
+        updateBrightness();
+        initDropdownShade();
+        initButtons();
+        initPinPad();
+        initAppLaunch();
+        initRealWeather();
+        initDevLoop();
+        initDevTouches();
+        applyDevOptions();
+
+        shadeSubtitle.textContent = `Balanced • Network: ${navigator.onLine ? 'Online' : 'Offline'}`;
+        widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: ${navigator.onLine ? 'Online' : 'Offline'}`;
+
+        setActiveScreen(bootScreen);
+        logEvent('Simulator init');
+        setTimeout(() => {
+            lockPhone();
+            startIntervals();
+        }, 2000);
+
+        window.addEventListener('online', () => {
+            widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: Online`;
+            shadeSubtitle.textContent = 'Balanced • Network: Online';
+            logEvent('Network: online');
+        });
+        window.addEventListener('offline', () => {
+            widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: Offline`;
+            shadeSubtitle.textContent = 'Balanced • Network: Offline';
+            logEvent('Network: offline');
+        });
+    }
+
+    init();
+})();
+</script>
+</body>
+</html>
