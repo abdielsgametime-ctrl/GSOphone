@@ -430,6 +430,34 @@
     .lock-pin {
         margin-top: 16px;
         text-align: center;
+        width: 100%;
+    }
+
+    .lock-auth-panel {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .lock-auth-panel.hidden {
+        display: none;
+    }
+
+    .lock-unlock-btn {
+        border: 1px solid rgba(255,255,255,0.35);
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+        border-radius: 999px;
+        padding: 8px 18px;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .lock-swipe-hint {
+        margin-top: 8px;
+        opacity: 0.75;
+        font-size: 11px;
     }
 
     .pin-dots {
@@ -457,6 +485,10 @@
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;
         margin-top: 8px;
+    }
+
+    .pin-entry-panel.hidden {
+        display: none;
     }
 
     .pin-key {
@@ -1253,29 +1285,33 @@
         margin-top: 2px;
     }
 
-    .recents-strip {
+    .nav-bar {
         position: absolute;
-        bottom: 10px;
         left: 0;
         right: 0;
+        bottom: 0;
+        height: 56px;
+        background: #000;
         display: flex;
-        justify-content: center;
-        gap: 6px;
-        z-index: 12;
+        align-items: center;
+        justify-content: space-around;
+        z-index: 18;
     }
 
-    .recents-pill {
-        width: 40px;
-        height: 4px;
+    .nav-btn {
+        width: 42px;
+        height: 42px;
         border-radius: 999px;
-        background: rgba(255,255,255,0.4);
+        border: none;
+        background: transparent;
+        color: #fff;
+        font-size: 22px;
         cursor: pointer;
-        transition: transform 0.12s ease, background 0.15s ease;
     }
 
-    .recents-pill:active {
+    .nav-btn:active {
         transform: scale(0.9);
-        background: rgba(255,255,255,0.7);
+        background: rgba(255,255,255,0.12);
     }
 
     .shutdown-screen-text {
@@ -1580,27 +1616,33 @@
                 <div class="lock-notifications" id="lockNotifications"></div>
                 <div>
                     <div class="lock-pin">
-                        <div class="pin-dots" id="pinDots">
-                            <div class="pin-dot"></div>
-                            <div class="pin-dot"></div>
-                            <div class="pin-dot"></div>
-                            <div class="pin-dot"></div>
+                        <div class="lock-auth-panel" id="lockAuthPanel">
+                            <button class="lock-unlock-btn" id="btnUnlockPrompt">Unlock</button>
+                            <button class="lock-action-btn" id="btnFingerprintUnlock">🆔 Fingerprint unlock</button>
+                            <div class="lock-swipe-hint">Swipe up to open passcode</div>
                         </div>
-                        <div class="pin-pad" id="pinPad">
-                            <button class="pin-key" data-key="1"><span>1</span></button>
-                            <button class="pin-key" data-key="2"><span>2</span></button>
-                            <button class="pin-key" data-key="3"><span>3</span></button>
-                            <button class="pin-key" data-key="4"><span>4</span></button>
-                            <button class="pin-key" data-key="5"><span>5</span></button>
-                            <button class="pin-key" data-key="6"><span>6</span></button>
-                            <button class="pin-key" data-key="7"><span>7</span></button>
-                            <button class="pin-key" data-key="8"><span>8</span></button>
-                            <button class="pin-key" data-key="9"><span>9</span></button>
-                            <button class="pin-key" data-key="clear"><span>⌫</span></button>
-                            <button class="pin-key" data-key="0"><span>0</span></button>
-                            <button class="pin-key" data-key="ok"><span>⏎</span></button>
+                        <div class="pin-entry-panel hidden" id="pinEntryPanel">
+                            <div class="pin-dots" id="pinDots">
+                                <div class="pin-dot"></div>
+                                <div class="pin-dot"></div>
+                                <div class="pin-dot"></div>
+                                <div class="pin-dot"></div>
+                            </div>
+                            <div class="pin-pad" id="pinPad">
+                                <button class="pin-key" data-key="1"><span>1</span></button>
+                                <button class="pin-key" data-key="2"><span>2</span></button>
+                                <button class="pin-key" data-key="3"><span>3</span></button>
+                                <button class="pin-key" data-key="4"><span>4</span></button>
+                                <button class="pin-key" data-key="5"><span>5</span></button>
+                                <button class="pin-key" data-key="6"><span>6</span></button>
+                                <button class="pin-key" data-key="7"><span>7</span></button>
+                                <button class="pin-key" data-key="8"><span>8</span></button>
+                                <button class="pin-key" data-key="9"><span>9</span></button>
+                                <button class="pin-key" data-key="clear"><span>⌫</span></button>
+                                <button class="pin-key" data-key="0"><span>0</span></button>
+                                <button class="pin-key" data-key="ok"><span>⏎</span></button>
+                            </div>
                         </div>
-                        <button class="lock-action-btn" id="btnFingerprintUnlock">🆔 Fingerprint unlock</button>
                     </div>
                     <div class="lock-footer">
                         Real time. Real network status. Fake phone.<br>
@@ -1646,8 +1688,10 @@
                 <div class="app-body" id="appBody"></div>
             </div>
 
-            <div class="recents-strip" id="recentsStrip">
-                <div class="recents-pill" id="btnRecents"></div>
+            <div class="nav-bar" id="navBar">
+                <button class="nav-btn" id="btnNavBack" aria-label="Back">◀</button>
+                <button class="nav-btn" id="btnNavHome" aria-label="Home">◉</button>
+                <button class="nav-btn" id="btnRecents" aria-label="Recents">◻</button>
             </div>
         </div>
 
@@ -1710,7 +1754,8 @@
     const btnVolDown = document.getElementById('btnVolDown');
     const btnAppBack = document.getElementById('btnAppBack');
     const btnRecents = document.getElementById('btnRecents');
-    const recentsStrip = document.getElementById('recentsStrip');
+    const btnNavBack = document.getElementById('btnNavBack');
+    const btnNavHome = document.getElementById('btnNavHome');
     const lockNotifications = document.getElementById('lockNotifications');
     const statusBar = document.getElementById('statusBar');
     const shadeSubtitle = document.getElementById('shadeSubtitle');
@@ -1722,6 +1767,9 @@
 
     const pinDots = document.getElementById('pinDots').children;
     const pinPad = document.getElementById('pinPad');
+    const pinEntryPanel = document.getElementById('pinEntryPanel');
+    const lockAuthPanel = document.getElementById('lockAuthPanel');
+    const btnUnlockPrompt = document.getElementById('btnUnlockPrompt');
     const btnFingerprintUnlock = document.getElementById('btnFingerprintUnlock');
     const shutdownText = document.getElementById('shutdownText');
     const shutdownHint = document.getElementById('shutdownHint');
@@ -1741,6 +1789,7 @@
     let cpuValue = 0;
     const APPS_PER_PAGE = 8;
     let homeSwipeStartX = null;
+    let lockSwipeStartY = null;
 
     let state = {
         poweredOn: true,
@@ -2100,6 +2149,7 @@
         state.locked = true;
         state.pinInput = '';
         updatePinDots();
+        hidePasscodeEntry();
         setActiveScreen(lockScreen);
         logEvent('Phone locked');
     }
@@ -2260,6 +2310,16 @@
     function updateBrightness() {
         const v = state.brightness / 100;
         phoneScreen.style.filter = `brightness(${0.4 + v * 0.6})`;
+    }
+
+    function showPasscodeEntry() {
+        lockAuthPanel.classList.add('hidden');
+        pinEntryPanel.classList.remove('hidden');
+    }
+
+    function hidePasscodeEntry() {
+        pinEntryPanel.classList.add('hidden');
+        lockAuthPanel.classList.remove('hidden');
     }
 
     function updatePinDots() {
@@ -4288,6 +4348,25 @@ This is a harmless generated profile for testing only.`;
             goHome();
         };
 
+        btnNavBack.onclick = () => {
+            if (state.currentApp) {
+                goHome();
+            } else if (!state.locked && !homeScreen.classList.contains('active')) {
+                goHome();
+            } else if (state.locked && !pinEntryPanel.classList.contains('hidden')) {
+                hidePasscodeEntry();
+            }
+        };
+
+        btnNavHome.onclick = () => {
+            if (state.locked) {
+                hidePasscodeEntry();
+                setActiveScreen(lockScreen);
+            } else {
+                goHome();
+            }
+        };
+
         btnRecents.onclick = () => {
             renderRecents();
         };
@@ -4295,6 +4374,26 @@ This is a harmless generated profile for testing only.`;
         sleepOverlay.addEventListener('click', () => {
             if (state.poweredOn) wakePhone();
         });
+
+        btnUnlockPrompt.addEventListener('click', () => {
+            showPasscodeEntry();
+            showToast('Enter passcode');
+        });
+
+        lockScreen.addEventListener('touchstart', e => {
+            lockSwipeStartY = e.changedTouches[0].clientY;
+        }, { passive: true });
+
+        lockScreen.addEventListener('touchend', e => {
+            if (lockSwipeStartY === null) return;
+            const endY = e.changedTouches[0].clientY;
+            const dy = endY - lockSwipeStartY;
+            lockSwipeStartY = null;
+            if (dy < -40 && state.locked) {
+                showPasscodeEntry();
+                showToast('Swipe up detected');
+            }
+        }, { passive: true });
 
         shutdownScreen.addEventListener('click', () => {
             if (state.batteryDead) startChargingFromDeadBattery();
