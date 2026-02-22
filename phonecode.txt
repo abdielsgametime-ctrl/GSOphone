@@ -34,7 +34,9 @@
 
 
     body.one-ui .phone-screen {
-        background: linear-gradient(180deg, #eef3ff 0%, #dbe6ff 52%, #d2dcfb 100%);
+        background-image: linear-gradient(180deg, rgba(238,243,255,0.82) 0%, rgba(219,230,255,0.74) 52%, rgba(210,220,251,0.7) 100%), var(--wallpaper-image);
+        background-size: cover;
+        background-position: center;
         color: #111;
     }
 
@@ -468,6 +470,7 @@
 
     .pin-key span {
         display: block;
+        color: #f5f8ff;
     }
 
     .home-screen {
@@ -3991,8 +3994,10 @@ This is a harmless generated profile for testing only.`;
             coral: ['#ff6f61', '#ff9a8f'],
             mint: ['#10b981', '#67e8c8']
         };
-        const wp = map[state.wallpaper] || map.ocean;
-        const colorKey = state.colorTheme || 'ocean';
+        const wallpaperKey = map[state.wallpaper] ? state.wallpaper : 'ocean';
+        if (wallpaperKey !== state.wallpaper) state.wallpaper = wallpaperKey;
+        const wp = map[wallpaperKey] || map.ocean;
+        const colorKey = state.colorTheme || wallpaperKey || 'ocean';
         const [accent, accent2] = palette[colorKey] || palette.ocean;
         document.documentElement.style.setProperty('--wallpaper-image', `url('${wp}')`);
         document.documentElement.style.setProperty('--theme-accent', accent);
