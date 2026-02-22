@@ -31,6 +31,13 @@
         color: #fff;
     }
 
+    body.dark-mode {
+        background: radial-gradient(circle at top, #0f1117 0, #05070b 65%);
+    }
+
+    body.dark-mode .phone-screen {
+        filter: saturate(0.9) brightness(0.85);
+    }
 
 
     body.one-ui .phone-screen {
@@ -471,6 +478,17 @@
     .pin-key span {
         display: block;
         color: #f5f8ff;
+    }
+
+    .lock-action-btn {
+        margin-top: 10px;
+        border: 1px solid rgba(255,255,255,0.28);
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        color: #f2f6ff;
+        padding: 7px 14px;
+        font-size: 12px;
+        cursor: pointer;
     }
 
     .home-screen {
@@ -1543,11 +1561,11 @@
 
             <div class="shutdown-screen" id="shutdownScreen">
                 <div class="boot-logo">GSO</div>
-                <div class="shutdown-screen-text">
+                <div class="shutdown-screen-text" id="shutdownText">
                     Shutting down GSO Phone…<br>
                     All systems are now offline.
                 </div>
-                <div class="shutdown-hint">
+                <div class="shutdown-hint" id="shutdownHint">
                     Press the power button to boot again.
                 </div>
             </div>
@@ -1582,6 +1600,7 @@
                             <button class="pin-key" data-key="0"><span>0</span></button>
                             <button class="pin-key" data-key="ok"><span>⏎</span></button>
                         </div>
+                        <button class="lock-action-btn" id="btnFingerprintUnlock">🆔 Fingerprint unlock</button>
                     </div>
                     <div class="lock-footer">
                         Real time. Real network status. Fake phone.<br>
@@ -1703,6 +1722,9 @@
 
     const pinDots = document.getElementById('pinDots').children;
     const pinPad = document.getElementById('pinPad');
+    const btnFingerprintUnlock = document.getElementById('btnFingerprintUnlock');
+    const shutdownText = document.getElementById('shutdownText');
+    const shutdownHint = document.getElementById('shutdownHint');
 
     const appGrid = document.getElementById('appGrid');
     const appPager = document.getElementById('appPager');
@@ -1741,6 +1763,9 @@
         brightness: 70,
         pin: '1234',
         pinInput: '',
+        fingerprintEnabled: true,
+        darkMode: false,
+        batteryDead: false,
         powerMenuVisible: false,
         recents: [],
         fakeLocationIndex: 0,
@@ -1856,6 +1881,10 @@
             batterySaver: state.batterySaver,
             devMode: state.devMode,
             brightness: state.brightness,
+            pin: state.pin,
+            fingerprintEnabled: state.fingerprintEnabled,
+            darkMode: state.darkMode,
+            batteryDead: state.batteryDead,
             storageUsed: state.storageUsed,
             galleryPhotos: state.galleryPhotos,
             notesText: state.notesText,
@@ -1943,12 +1972,13 @@
                 showToast('Battery low: 15% remaining');
                 pushNotification('Battery', 'Battery low. Consider enabling Battery Saver.');
             }
-            if (state.battery === 1) {
-                showToast('Battery critically low. Shutting down…');
-                logEvent('Battery critical, auto shutdown');
+            if (state.battery === 0) {
+                state.batteryDead = true;
+                showToast('Battery empty. Phone turned off.');
+                logEvent('Battery depleted to 0%');
                 setTimeout(() => {
                     performShutdown();
-                }, 1500);
+                }, 600);
             }
         }
     }
@@ -2109,9 +2139,41 @@
         logEvent('Wake: screen on');
     }
 
+    let chargerInterval = null;
+
     function clearAllIntervals() {
         intervals.forEach(id => clearInterval(id));
         intervals = [];
+    }
+
+    function updateShutdownStatus(text, hint) {
+        if (shutdownText) shutdownText.innerHTML = text;
+        if (shutdownHint) shutdownHint.textContent = hint;
+    }
+
+    function applyDarkMode() {
+        document.body.classList.toggle('dark-mode', !!state.darkMode);
+    }
+
+    function startChargingFromDeadBattery() {
+        if (!state.batteryDead) return;
+        if (chargerInterval) return;
+        updateShutdownStatus('Battery is fully drained (0%).<br>Charging connected.', 'Charging... tap power to boot once battery has charge.');
+        showToast('Charger connected');
+        logEvent('Charger connected');
+        chargerInterval = setInterval(() => {
+            state.battery = Math.min(100, state.battery + 2);
+            updateBatteryUI();
+            saveState();
+            if (state.battery >= 5) {
+                clearInterval(chargerInterval);
+                chargerInterval = null;
+                state.batteryDead = false;
+                updateShutdownStatus('Battery recovered. Ready to boot.', 'Press power button to boot again.');
+                showToast('Battery recovered: ' + state.battery + '%');
+                saveState();
+            }
+        }, 1200);
     }
 
     function performShutdown() {
@@ -2122,12 +2184,27 @@
         state.powerMenuVisible = false;
         powerMenu.style.display = 'none';
         clearAllIntervals();
+        if (state.batteryDead) {
+            updateShutdownStatus('Battery is fully drained (0%).<br>Phone is off.', 'Tap screen to plug in charger.');
+        } else {
+            updateShutdownStatus('Shutting down GSO Phone…<br>All systems are now offline.', 'Press the power button to boot again.');
+        }
         setActiveScreen(shutdownScreen);
         saveState();
         logEvent('System: shutdown');
     }
 
     function performBoot() {
+        if (state.battery <= 0 || state.batteryDead) {
+            showToast('Battery empty. Tap screen to plug charger.');
+            state.batteryDead = true;
+            performShutdown();
+            return;
+        }
+        if (chargerInterval) {
+            clearInterval(chargerInterval);
+            chargerInterval = null;
+        }
         state.poweredOn = true;
         state.sleeping = false;
         state.locked = true;
@@ -3147,6 +3224,23 @@
                 When enabled, extra overlays, logs, and hidden apps become available.
             </div>
 
+            <div class="app-section-title">Security</div>
+            <div class="settings-row">
+                <div class="settings-label">Fingerprint unlock</div>
+                <div class="toggle ${state.fingerprintEnabled ? 'on' : ''}" id="toggleFingerprint"><div class="toggle-knob"></div></div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;">
+                <input id="currentPinInput" type="password" maxlength="4" placeholder="Current PIN" style="padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#fff;" />
+                <input id="newPinInput" type="password" maxlength="4" placeholder="New 4-digit PIN" style="padding:8px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#fff;" />
+            </div>
+            <button class="btn btn-secondary" id="btnChangePin" style="margin-top:6px; width:100%;">Change passcode</button>
+
+            <div class="app-section-title">Appearance</div>
+            <div class="settings-row">
+                <div class="settings-label">Dark mode</div>
+                <div class="toggle ${state.darkMode ? 'on' : ''}" id="toggleDarkMode"><div class="toggle-knob"></div></div>
+            </div>
+
             <div class="app-section-title">Wallpaper colors</div>
             <button class="btn btn-secondary" id="btnSetWpOcean" style="margin-top:6px; width:100%;">Ocean Blue wallpaper</button>
             <button class="btn btn-secondary" id="btnSetWpPurple" style="margin-top:6px; width:100%;">Purple Glow wallpaper</button>
@@ -3161,6 +3255,8 @@
         const toggleAirplane = document.getElementById('toggleAirplane');
         const toggleBatterySaver = document.getElementById('toggleBatterySaver');
         const toggleDevMode = document.getElementById('toggleDevMode');
+        const toggleFingerprint = document.getElementById('toggleFingerprint');
+        const toggleDarkMode = document.getElementById('toggleDarkMode');
 
         toggleWifi.onclick = () => {
             state.wifiOn = !state.wifiOn;
@@ -3209,6 +3305,35 @@
             applyDevOptions();
             renderApps();
             saveState();
+        };
+
+        toggleFingerprint.onclick = () => {
+            state.fingerprintEnabled = !state.fingerprintEnabled;
+            toggleFingerprint.classList.toggle('on', state.fingerprintEnabled);
+            btnFingerprintUnlock.style.display = state.fingerprintEnabled ? 'inline-block' : 'none';
+            showToast(state.fingerprintEnabled ? 'Fingerprint unlock enabled' : 'Fingerprint unlock disabled');
+            saveState();
+        };
+
+        toggleDarkMode.onclick = () => {
+            state.darkMode = !state.darkMode;
+            toggleDarkMode.classList.toggle('on', state.darkMode);
+            applyDarkMode();
+            saveState();
+            showToast(state.darkMode ? 'Dark mode enabled' : 'Dark mode disabled');
+        };
+
+        document.getElementById('btnChangePin').onclick = () => {
+            const currentPin = document.getElementById('currentPinInput').value.trim();
+            const newPin = document.getElementById('newPinInput').value.trim();
+            if (currentPin !== state.pin) return showToast('Current passcode is incorrect');
+            if (!/^\d{4}$/.test(newPin)) return showToast('New passcode must be 4 digits');
+            state.pin = newPin;
+            saveState();
+            document.getElementById('currentPinInput').value = '';
+            document.getElementById('newPinInput').value = '';
+            showToast('Passcode changed');
+            logEvent('Security: passcode changed');
         };
 
         function setSettingsWallpaper(key, label) {
@@ -3976,9 +4101,10 @@ This is a harmless generated profile for testing only.`;
     function applyOneUiMode() {
         document.body.classList.toggle('one-ui', !!state.oneUiMode);
         document.body.setAttribute('data-galaxy-theme', state.galaxyTheme || 'oneui-light');
+        const inlineSvg = svg => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
         const inlineWallpapers = {
-            coral: `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 2400" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7b6e"/><stop offset="0.5" stop-color="#ff9e8c"/><stop offset="1" stop-color="#ffc7a2"/></linearGradient></defs><rect width="1080" height="2400" fill="url(%23bg)"/><circle cx="220" cy="430" r="260" fill="#ffffff" opacity="0.15"/><circle cx="870" cy="1700" r="380" fill="#ff4f7a" opacity="0.18"/></svg>')}`,
-            mint: `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 2400" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0ea67a"/><stop offset="0.5" stop-color="#3ecf9f"/><stop offset="1" stop-color="#95f3d5"/></linearGradient></defs><rect width="1080" height="2400" fill="url(%23bg)"/><circle cx="840" cy="420" r="300" fill="#ffffff" opacity="0.12"/><circle cx="280" cy="1800" r="360" fill="#0a8065" opacity="0.2"/></svg>')}`
+            coral: inlineSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 2400" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff7b6e"/><stop offset="0.5" stop-color="#ff9e8c"/><stop offset="1" stop-color="#ffc7a2"/></linearGradient></defs><rect width="1080" height="2400" fill="url(%23bg)"/><circle cx="220" cy="430" r="260" fill="#ffffff" opacity="0.15"/><circle cx="870" cy="1700" r="380" fill="#ff4f7a" opacity="0.18"/></svg>'),
+            mint: inlineSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 2400" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0ea67a"/><stop offset="0.5" stop-color="#3ecf9f"/><stop offset="1" stop-color="#95f3d5"/></linearGradient></defs><rect width="1080" height="2400" fill="url(%23bg)"/><circle cx="840" cy="420" r="300" fill="#ffffff" opacity="0.12"/><circle cx="280" cy="1800" r="360" fill="#0a8065" opacity="0.2"/></svg>')
         };
         const map = {
             ocean: 'wallpaper-ocean.svg',
@@ -4104,6 +4230,10 @@ This is a harmless generated profile for testing only.`;
 
         btnPower.addEventListener('mouseup', () => {
             if (!state.poweredOn) {
+                if (state.batteryDead || state.battery <= 0) {
+                    showToast('Battery empty. Tap screen to plug charger.');
+                    return;
+                }
                 performBoot();
                 return;
             }
@@ -4165,6 +4295,10 @@ This is a harmless generated profile for testing only.`;
         sleepOverlay.addEventListener('click', () => {
             if (state.poweredOn) wakePhone();
         });
+
+        shutdownScreen.addEventListener('click', () => {
+            if (state.batteryDead) startChargingFromDeadBattery();
+        });
     }
 
     function initPinPad() {
@@ -4173,6 +4307,13 @@ This is a harmless generated profile for testing only.`;
                 const key = btn.dataset.key;
                 handlePinKey(key);
             });
+        });
+        btnFingerprintUnlock.style.display = state.fingerprintEnabled ? 'inline-block' : 'none';
+        btnFingerprintUnlock.addEventListener('click', () => {
+            if (!state.fingerprintEnabled) return showToast('Fingerprint unlock is disabled');
+            showToast('Fingerprint recognized');
+            unlockPhone();
+            logEvent('Security: fingerprint unlock used');
         });
     }
 
@@ -4282,16 +4423,26 @@ This is a harmless generated profile for testing only.`;
         initDevTouches();
         applyDevOptions();
         applyOneUiMode();
+        applyDarkMode();
 
         shadeSubtitle.textContent = `Balanced • Network: ${navigator.onLine ? 'Online' : 'Offline'}`;
         widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: ${navigator.onLine ? 'Online' : 'Offline'}`;
 
-        setActiveScreen(bootScreen);
         logEvent('Simulator init');
-        setTimeout(() => {
-            lockPhone();
-            startIntervals();
-        }, 2000);
+        if (!state.poweredOn) {
+            if (state.batteryDead) {
+                updateShutdownStatus('Battery is fully drained (0%).<br>Phone is off.', 'Tap screen to plug in charger.');
+            } else {
+                updateShutdownStatus('Shutting down GSO Phone…<br>All systems are now offline.', 'Press the power button to boot again.');
+            }
+            setActiveScreen(shutdownScreen);
+        } else {
+            setActiveScreen(bootScreen);
+            setTimeout(() => {
+                lockPhone();
+                startIntervals();
+            }, 2000);
+        }
 
         window.addEventListener('online', () => {
             widgetStatusSub.textContent = `Battery: ${state.battery}% • Network: Online`;
